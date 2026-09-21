@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SoulSync | Квиз для пар</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Фиксация скролла: приложение ощущается нативным */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d0914;
+            color: #ffffff;
+            position: fixed; inset: 0; width: 100vw; height: 100vh; overflow: hidden;
+            -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Анимированный глубокий фон */
+        .bg-auras {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+            background: radial-gradient(circle at 50% 50%, #1f1430 0%, #0d0914 100%);
+            overflow: hidden;
+        }
+        .aura {
+            position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.5;
+            animation: float 25s infinite ease-in-out alternate;
+        }
+        .aura-1 { width: 50vw; height: 50vw; background: rgba(255, 0, 127, 0.15); top: -10%; left: -10%; animation-delay: 0s; }
+        .aura-2 { width: 60vw; height: 60vw; background: rgba(112, 0, 255, 0.15); bottom: -20%; right: -10%; animation-delay: -5s; }
+        .aura-3 { width: 40vw; height: 40vw; background: rgba(0, 212, 255, 0.1); top: 30%; left: 50%; animation-delay: -10s; }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(5vw, 5vh) scale(1.1); }
+            100% { transform: translate(-5vw, 3vh) scale(0.9); }
+        }
+
+        /* Премиальный Glassmorphism */
+        .glass-panel {
+            background: rgba(25, 20, 35, 0.5);
+            backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.7);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        /* Поля ввода */
+        .glass-input {
+            background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white; transition: all 0.3s ease; user-select: text;
+        }
+        .glass-input:focus {
+            outline: none; border-color: rgba(255, 0, 127, 0.4); background: rgba(0, 0, 0, 0.5);
+        }
+
+        /* Кнопки */
+        .btn-alive { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
+        .btn-alive:active { transform: scale(0.95); }
+        .btn-alive:disabled { opacity: 0.5; pointer-events: none; }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #ff007f 0%, #7000ff 100%);
+            border: none; color: white; box-shadow: 0 8px 25px rgba(255, 0, 127, 0.25);
+        }
+        .btn-secondary { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); }
+
+        /* Навигация и Скролл */
+        .nav-item { transition: all 0.3s ease; }
+        .nav-item.active { color: #ff007f; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+
+        /* Утилиты видимости */
+        .view-section { display: none; flex-direction: column; height: 100%; width: 100%; }
+        .view-section.active { display: flex; animation: fadeIn 0.4s ease forwards; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+        
+        .pop-animation { animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        
+        /* Confetti Canvas */
+        #confetti-canvas { pointer-events: none; z-index: 100; position: absolute; top:0; left:0; width:100%; height:100%; }
+
+        /* Анимация "печатания" партнера */
+        .typing-dots { display: inline-flex; align-items: center; margin-left: 6px; }
+        .typing-dots span {
+            animation: bounce 1.4s infinite ease-in-out both;
+            display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: #ff007f; margin: 0 2px;
+        }
+        .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce { 
+            0%, 80%, 100% { transform: translateY(0); opacity: 0.5; } 
+            40% { transform: translateY(-4px); opacity: 1; } 
+        }
+    </style>
+</head>
+<body class="antialiased flex items-center justify-center sm:p-4 w-full h-full">
+
+    <div class="bg-auras">
+        <div class="aura aura-1"></div><div class="aura aura-2"></div><div class="aura aura-3"></div>
+    </div>
+    
+    <canvas id="confetti-canvas"></canvas>
+
+    <!-- Главный контейнер зафиксирован по размеру окна -->
+    <div id="app-container" class="w-full h-full sm:h-[95vh] sm:max-w-xl sm:rounded-[28px] rounded-none glass-panel flex flex-col relative overflow-hidden shadow-2xl">
+        
+        <!-- HEADER -->
+        <header class="flex justify-between items-center p-5 border-b border-white/5 opacity-0 transition-opacity duration-300 z-10 shrink-0" id="main-header" style="display: none;">
+            <h1 class="text-xl font-medium tracking-wide flex items-center gap-2 text-white/90">
+                <i class="fa-solid fa-infinity text-[#ff007f]"></i> SoulSync
+            </h1>
+            <div id="header-partner-status" class="hidden items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-gray-300">
+                <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div> <span id="hp-name">Партнер</span>
+            </div>
+        </header>
+
+        <!-- CONTENT AREA (Прокручивается только эта часть) -->
+        <div class="flex-1 overflow-y-auto relative p-5 pb-6" id="content-area">
+            
+            <!-- AUTH -->
+            <div id="view-login" class="view-section active justify-center items-center text-center h-full">
+                <div class="w-24 h-24 mb-6 rounded-full glass-card flex items-center justify-center text-4xl text-[#ff007f] shadow-[0_0_30px_rgba(255,0,127,0.15)] pop-animation">
+                    <i class="fa-regular fa-heart animate-pulse"></i>
+                </div>
+                <h2 class="text-3xl font-medium mb-2 tracking-wide text-white">SoulSync</h2>
+                <p class="text-gray-400 mb-10 text-sm font-light">Познайте друг друга по-настоящему</p>
+                
+                <div class="w-full max-w-xs space-y-4">
+                    <input type="text" id="input-name" placeholder="Ваше имя" class="w-full px-5 py-4 rounded-2xl glass-input text-center font-medium">
+                    <button id="btn-login" onclick="handleLogin()" class="w-full py-4 rounded-2xl btn-alive btn-primary font-medium tracking-wide">
+                        Продолжить
+                    </button>
+                </div>
+            </div>
+
+            <!-- LINK PARTNER -->
+            <div id="view-link" class="view-section justify-center items-center text-center h-full">
+                <div class="w-16 h-16 mb-6 rounded-full glass-card flex items-center justify-center text-2xl text-[#7000ff] pop-animation">
+                    <i class="fa-solid fa-link"></i>
+                </div>
+                <h2 class="text-2xl font-medium mb-8 text-white/90">Создание связи</h2>
+                
+                <div class="w-full p-6 mb-6 rounded-3xl bg-black/20 border border-white/5 relative group">
+                    <p class="text-xs text-gray-400 mb-3 font-light">Ваш код для приглашения:</p>
+                    <div class="text-5xl font-mono tracking-widest font-light text-white mb-2 cursor-pointer btn-alive select-all" id="my-code" onclick="copyCode()">------</div>
+                    <p class="text-xs text-[#ff007f] opacity-80" id="copy-status">Нажмите, чтобы скопировать</p>
+                </div>
+
+                <div class="w-full flex items-center gap-4 mb-6 opacity-30">
+                    <div class="h-px bg-white flex-1"></div><span class="text-xs font-light">ИЛИ</span><div class="h-px bg-white flex-1"></div>
+                </div>
+
+                <div class="w-full space-y-4">
+                    <input type="text" id="input-partner-code" maxlength="6" placeholder="Код партнера" class="w-full px-5 py-4 rounded-2xl glass-input text-center font-mono text-2xl tracking-[0.2em] uppercase">
+                    <button id="btn-link" onclick="linkPartner()" class="w-full py-4 rounded-2xl btn-alive btn-primary font-medium">Соединить</button>
+                </div>
+                <div id="linking-status" class="mt-4 text-sm text-[#00d4ff] hidden"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Ожидание...</div>
+            </div>
+
+            <!-- DASHBOARD: ТЕМЫ -->
+            <div id="view-topics" class="view-section">
+                <div id="partner-invite-alert" class="hidden p-4 mb-6 rounded-2xl bg-[#7000ff]/20 border border-[#7000ff]/30 shadow-lg justify-between items-center pop-animation">
+                    <div>
+                        <p class="text-[10px] font-bold text-[#00d4ff] uppercase">Приглашение</p>
+                        <p class="text-sm text-white">Партнер зовет в: <span id="invite-topic-name" class="font-medium">...</span></p>
+                    </div>
+                    <button onclick="acceptInvite()" class="btn-primary px-4 py-2 rounded-xl text-xs font-medium btn-alive">Принять</button>
+                </div>
+
+                <h2 class="text-2xl font-medium mb-1 text-white/90">Темы</h2>
+                <p class="text-xs text-gray-400 font-light mb-6">Выберите категорию для сближения</p>
+                
+                <div id="topics-container" class="grid grid-cols-2 gap-3 pb-6">
+                    <!-- JS генерирует темы -->
+                </div>
+            </div>
+
+            <!-- DASHBOARD: БЛОКИ (Внутри темы) -->
+            <div id="view-blocks" class="view-section">
+                <button onclick="showNavView('topics')" class="text-gray-400 text-sm mb-4 flex items-center gap-2 hover:text-white btn-alive w-fit"><i class="fa-solid fa-arrow-left"></i> Назад к темам</button>
+                <div class="flex items-center gap-3 mb-6">
+                    <div id="block-view-icon" class="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-xl shrink-0"></div>
+                    <div>
+                        <h2 id="block-view-title" class="text-xl font-medium text-white/90 leading-tight">Название темы</h2>
+                        <p id="block-view-desc" class="text-xs text-gray-400 font-light">Описание</p>
+                    </div>
+                </div>
+                <div id="blocks-container" class="space-y-3 pb-6">
+                    <!-- JS генерирует блоки -->
+                </div>
+            </div>
+
+            <!-- DASHBOARD: ИСТОРИЯ -->
+            <div id="view-history" class="view-section">
+                <h2 class="text-2xl font-medium mb-1 text-white/90">История</h2>
+                <p class="text-xs text-gray-400 font-light mb-6">Пройденные вами квизы</p>
+                <div id="history-container" class="space-y-3 pb-6">
+                    <p class="text-sm text-gray-500 text-center mt-10">История пока пуста.</p>
+                </div>
+            </div>
+
+            <!-- DASHBOARD: ПРОФИЛЬ (Счетчик и настройки) -->
+            <div id="view-profile" class="view-section">
+                <h2 class="text-2xl font-medium mb-6 text-white/90">Профиль</h2>
+                
+                <div class="glass-card p-6 rounded-3xl mb-6 relative overflow-hidden text-center">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-[#ff007f] rounded-full blur-[70px] opacity-20"></div>
+                    <div class="w-20 h-20 bg-black/30 rounded-full mx-auto mb-3 flex items-center justify-center text-3xl text-gray-300 border border-white/10"><i class="fa-regular fa-user"></i></div>
+                    <h3 class="text-xl font-medium text-white" id="profile-name">Имя</h3>
+                    <p class="text-xs text-gray-400 mt-1">В паре с: <span id="profile-partner-name" class="text-[#00d4ff]">...</span></p>
+                </div>
+
+                <div class="glass-card p-6 rounded-3xl mb-6">
+                    <h3 class="font-medium text-sm mb-4 text-white/90 flex items-center"><i class="fa-solid fa-gear text-[#00d4ff] mr-2"></i> Настройки</h3>
+                    
+                    <div class="mb-4">
+                        <label class="block text-xs text-gray-400 mb-2">Ваше имя:</label>
+                        <input type="text" id="edit-my-name" class="w-full glass-input p-3 rounded-xl text-sm mb-3">
+                        
+                        <label class="block text-xs text-gray-400 mb-2">Дата начала отношений:</label>
+                        <input type="date" id="date-start" class="w-full glass-input p-3 rounded-xl text-sm mb-4" style="color-scheme: dark;">
+                        
+                        <button onclick="saveProfile()" class="w-full py-3 btn-secondary rounded-xl btn-alive text-sm font-medium"><i class="fa-solid fa-save mr-2"></i> Сохранить изменения</button>
+                    </div>
+
+                    <div class="grid grid-cols-4 gap-2 text-center mt-6 pt-6 border-t border-white/5">
+                        <div><div id="cnt-days" class="text-xl text-[#ff007f]">0</div><div class="text-[9px] text-gray-500 uppercase">Дней</div></div>
+                        <div><div id="cnt-hours" class="text-xl text-white">0</div><div class="text-[9px] text-gray-500 uppercase">Часов</div></div>
+                        <div><div id="cnt-mins" class="text-xl text-white">0</div><div class="text-[9px] text-gray-500 uppercase">Минут</div></div>
+                        <div><div id="cnt-secs" class="text-xl text-gray-500">0</div><div class="text-[9px] text-gray-500 uppercase">Сек</div></div>
+                    </div>
+                </div>
+
+                <button onclick="logout()" class="w-full py-4 rounded-2xl btn-secondary btn-alive text-red-400 text-sm font-medium mb-6"><i class="fa-solid fa-arrow-right-from-bracket mr-2"></i>Выйти из аккаунта</button>
+            </div>
+
+            <!-- QUIZ: MODE SELECT (Соло или Пара) -->
+            <div id="view-quiz-mode" class="view-section justify-center items-center text-center h-full absolute inset-0 z-20 bg-[#0d0914]/95 backdrop-blur-md p-5">
+                <button onclick="closeQuizMode()" class="absolute top-5 left-5 text-gray-400 p-2 btn-alive"><i class="fa-solid fa-xmark text-xl"></i></button>
+                <h2 class="text-2xl font-medium mb-2 text-white" id="mode-block-title">Название</h2>
+                <p class="text-sm text-gray-400 mb-10">Как вы хотите пройти этот квиз?</p>
+                
+                <div class="w-full max-w-sm space-y-4">
+                    <button onclick="startQuizInit('pair')" class="w-full p-5 rounded-2xl btn-primary btn-alive flex flex-col items-center gap-2">
+                        <i class="fa-solid fa-user-group text-2xl mb-1"></i>
+                        <span class="font-medium">Вместе с партнером</span>
+                        <span class="text-xs text-white/70 font-light">Дождаться и сравнить ответы</span>
+                    </button>
+                    <button onclick="startQuizInit('solo')" class="w-full p-5 rounded-2xl glass-card btn-alive flex flex-col items-center gap-2 border-[#00d4ff]/30 hover:bg-[#00d4ff]/10">
+                        <i class="fa-solid fa-user text-2xl text-[#00d4ff] mb-1"></i>
+                        <span class="font-medium text-white">Соло режим</span>
+                        <span class="text-xs text-gray-400 font-light">Ответить для себя (прогресс 50%)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- QUIZ: WAITING -->
+            <div id="view-quiz-waiting" class="view-section justify-center items-center text-center h-full absolute inset-0 z-20 bg-[#0d0914] p-5">
+                <i class="fa-solid fa-circle-notch fa-spin text-4xl text-[#ff007f] mb-6"></i>
+                <h2 class="text-xl font-medium mb-2 text-white/90" id="waiting-title">Ожидание...</h2>
+                <p class="text-sm text-gray-400 font-light max-w-xs" id="waiting-desc">Пожалуйста, подождите.</p>
+                <button onclick="cancelQuiz()" class="mt-10 text-sm text-gray-500 hover:text-white btn-secondary px-6 py-3 rounded-xl btn-alive">Отменить</button>
+            </div>
+
+            <!-- QUIZ: ACTIVE QUESTION -->
+            <div id="view-quiz-active" class="view-section h-full absolute inset-0 z-20 bg-[#0d0914] p-5">
+                <div class="flex justify-between items-center mb-6 shrink-0">
+                    <span id="quiz-active-category" class="text-xs font-medium text-[#00d4ff] bg-[#00d4ff]/10 px-3 py-1.5 rounded-lg">Категория</span>
+                    <span class="text-xs font-mono text-gray-400 bg-white/5 px-3 py-1.5 rounded-lg"><span id="q-current" class="text-white">1</span> / <span id="q-total">10</span></span>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="w-full h-1 bg-white/10 rounded-full mb-8 overflow-hidden shrink-0">
+                    <div id="quiz-progress-bar" class="h-full bg-gradient-to-r from-[#ff007f] to-[#7000ff] w-0 transition-all duration-300"></div>
+                </div>
+
+                <div class="flex-1 flex flex-col justify-center mb-6 overflow-y-auto">
+                    <h2 id="question-text" class="text-2xl font-medium leading-snug mb-8 text-center text-white/90">Загрузка...</h2>
+                    <div id="answers-container" class="w-full flex flex-col gap-3 transition-opacity duration-300"></div>
+                </div>
+
+                <div id="partner-status-box" class="p-4 rounded-2xl bg-black/40 border border-white/5 flex items-center justify-between mt-auto shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div class="w-2 h-2 rounded-full bg-[#ff007f] animate-pulse"></div>
+                        <span class="text-xs text-gray-400" id="partner-quiz-status">Партнер отвечает...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- POPUP: DONE ANIMATION -->
+            <div id="view-quiz-done" class="view-section justify-center items-center h-full absolute inset-0 z-30 bg-black/80 backdrop-blur-sm p-5">
+                <div id="done-popup" class="glass-panel p-8 text-center scale-0 transition-transform duration-500 ease-out border-[#00d4ff]/30 shadow-[0_0_50px_rgba(0,212,255,0.2)] w-full max-w-sm">
+                    <i class="fa-solid fa-trophy text-5xl text-[#00d4ff] mb-4 pop-animation" style="animation-delay: 0.3s"></i>
+                    <h2 class="text-3xl font-medium text-white mb-2">Потрясающе!</h2>
+                    <p class="text-sm text-gray-300 mb-8 font-light">Вы завершили этот блок вопросов.</p>
+                    <button onclick="goToResults()" class="w-full py-4 rounded-xl btn-primary btn-alive font-medium">Смотреть результаты</button>
+                </div>
+            </div>
+
+            <!-- QUIZ: RESULTS -->
+            <div id="view-results" class="view-section h-full absolute inset-0 z-20 bg-[#0d0914] p-5 overflow-y-auto">
+                <button onclick="closeResults()" class="text-gray-400 text-sm mb-6 flex items-center gap-2 btn-alive shrink-0"><i class="fa-solid fa-arrow-left"></i> Вернуться в лобби</button>
+                
+                <div class="text-center mb-8 shrink-0">
+                    <h2 class="text-2xl font-medium text-white/90" id="res-title">Результаты</h2>
+                    <p class="text-sm text-gray-400 mt-1">Ответы и анализ</p>
+                </div>
+
+                <div id="ai-loading" class="glass-card p-8 rounded-3xl flex flex-col items-center text-center mb-8 border-[#7000ff]/20 shrink-0">
+                    <i class="fa-solid fa-brain text-3xl text-[#7000ff] mb-4 animate-pulse"></i>
+                    <p class="text-sm text-white mb-1">ИИ анализирует ответы...</p>
+                    <p class="text-xs text-gray-500">Поиск точек соприкосновения</p>
+                </div>
+
+                <div id="ai-report" class="hidden p-6 rounded-3xl border border-[#7000ff]/30 bg-gradient-to-b from-[#7000ff]/10 to-transparent mb-8 shrink-0">
+                    <h3 class="font-medium text-sm mb-4 text-[#00d4ff] flex items-center gap-2"><i class="fa-solid fa-sparkles"></i> Вердикт ИИ</h3>
+                    <div id="ai-content" class="text-sm text-gray-300 space-y-3 font-light leading-relaxed"></div>
+                </div>
+
+                <h3 class="font-medium text-sm mb-4 text-white/80 shrink-0">Сравнение ответов</h3>
+                <div id="comparison-container" class="space-y-3 pb-10"></div>
+            </div>
+
+        </div> <!-- End Content -->
+
+        <!-- BOTTOM NAVIGATION -->
+        <nav id="bottom-nav" class="flex justify-around items-center p-4 bg-black/40 backdrop-blur-md border-t border-white/5 w-full shrink-0">
+            <button onclick="showNavView('topics')" class="nav-item flex flex-col items-center gap-1 active text-gray-500 w-16" id="nav-btn-topics">
+                <i class="fa-solid fa-layer-group text-lg"></i><span class="text-[9px] uppercase tracking-wider font-medium">Темы</span>
+            </button>
+            <button onclick="showNavView('history')" class="nav-item flex flex-col items-center gap-1 text-gray-500 w-16" id="nav-btn-history">
+                <i class="fa-solid fa-clock-rotate-left text-lg"></i><span class="text-[9px] uppercase tracking-wider font-medium">История</span>
+            </button>
+            <button onclick="showNavView('profile')" class="nav-item flex flex-col items-center gap-1 text-gray-500 w-16" id="nav-btn-profile">
+                <i class="fa-solid fa-user text-lg"></i><span class="text-[9px] uppercase tracking-wider font-medium">Профиль</span>
+            </button>
+        </nav>
+
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, onSnapshot, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Ваши ключи Firebase и OpenAI
+        const myExternalFirebaseConfig = {
+            apiKey: "AIzaSyDIvUdI4ufZEuEWJpkimgb3I2uMeGeh3L4",
+            authDomain: "quiz-7a32d.firebaseapp.com",
+            projectId: "quiz-7a32d",
+            storageBucket: "quiz-7a32d.firebasestorage.app",
+            messagingSenderId: "610375905718",
+            appId: "1:610375905718:web:54a62dbb210ac73eed5117"
+        };
+        const appId = "couples-quiz-app";
+        const OPENAI_API_KEY = "sk-2uYFnDkB079l4WClduRLGzICb15zuZypFsxyWG8SjWxQd7hT";
+        const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+
+        // Расширенная База Вопросов
+        const QUIZ_DATA = {
+            'everyday': {
+                id: 'everyday', title: 'Быт и Привычки', icon: 'fa-house', color: 'text-blue-400', desc: 'Уборка, деньги, рутина',
+                blocks: {
+                    'cleaning': {
+                        title: 'Порядок в доме', desc: 'Чистота или хаос?', 
+                        questions: [
+                            { id: 'ev_c1', type: 'slider', text: 'Как часто нужно делать генеральную уборку?', labels: ['Редко', 'Каждую неделю'] },
+                            { id: 'ev_c2', type: 'boolean', text: 'Должны ли обязанности делиться строго 50/50?' },
+                            { id: 'ev_c3', type: 'choice', text: 'Кто должен мыть посуду?', options: ['Кто готовил, тот отдыхает', 'По очереди', 'Вместе', 'Посудомойка!'] },
+                            { id: 'ev_c4', type: 'boolean', text: 'Раздражают ли тебя разбросанные вещи партнера?' },
+                            { id: 'ev_c5', type: 'choice', text: 'Генеральная уборка - это...', options: ['Необходимое зло', 'Совместный ритуал', 'Работа для клининга', 'Повод для ссоры'] }
+                        ]
+                    },
+                    'food': {
+                        title: 'Еда и Готовка', desc: 'Кто шеф-повар?',
+                        questions: [
+                            { id: 'ev_f1', type: 'slider', text: 'Баланс: Готовим дома vs Заказ еды', labels: ['Только дома', 'Только доставка'] },
+                            { id: 'ev_f2', type: 'boolean', text: 'Ок ли ужинать перед телевизором каждый день?' },
+                            { id: 'ev_f3', type: 'choice', text: 'Если оба устали после работы:', options: ['Закажем пиццу', 'Кто-то один пожертвует собой', 'Поедим бутерброды', 'Пойдем в кафе'] },
+                            { id: 'ev_f4', type: 'boolean', text: 'Нужно ли всегда завтракать вместе?' }
+                        ]
+                    },
+                    'money': {
+                        title: 'Финансы', desc: 'Семейный бюджет',
+                        questions: [
+                            { id: 'ev_m1', type: 'choice', text: 'Формат бюджета:', options: ['Полностью Общий', 'Раздельный', 'Пропорционально доходам', 'Пока не думали'] },
+                            { id: 'ev_m2', type: 'slider', text: 'Твой подход к деньгам', labels: ['Трачу в кайф', 'Коплю на будущее'] },
+                            { id: 'ev_m3', type: 'boolean', text: 'Нужно ли обсуждать личные покупки дороже $100?' },
+                            { id: 'ev_m4', type: 'choice', text: 'Если партнер потерял работу:', options: ['Я потяну всё', 'Берем из общих накоплений', 'Срочно ищем ему любую', 'Это будет стресс'] },
+                            { id: 'ev_m5', type: 'boolean', text: 'Считаешь ли ты нормальным брать кредиты на отпуск?' }
+                        ]
+                    }
+                }
+            },
+            'relationships': {
+                id: 'relationships', title: 'Отношения', icon: 'fa-heart', color: 'text-pink-500', desc: 'Эмоции и любовь',
+                blocks: {
+                    'conflict': {
+                        title: 'Ссоры', desc: 'Как мы миримся',
+                        questions: [
+                            { id: 'r_c1', type: 'choice', text: 'Кто извиняется первым?', options: ['Тот кто неправ', 'Обычно мужчина', 'Кто остыл быстрее', 'Никто'] },
+                            { id: 'r_c2', type: 'slider', text: 'Как долго ты дуешься после ссоры?', labels: ['Отпускаю сразу', 'Могу молчать днями'] },
+                            { id: 'r_c3', type: 'boolean', text: 'Можно ли ложиться спать, не помирившись?' },
+                            { id: 'r_c4', type: 'choice', text: 'В ссоре я обычно...', options: ['Эмоционирую', 'Молчу и ухожу', 'Пытаюсь решить логично', 'Сразу плачу'] },
+                            { id: 'r_c5', type: 'boolean', text: 'Нормально ли повышать голос в споре?' }
+                        ]
+                    },
+                    'secrets': {
+                        title: 'Секреты', desc: 'Насколько мы открыты',
+                        questions: [
+                            { id: 'r_s1', type: 'slider', text: 'Баланс честности', labels: ['У меня есть секреты', 'Мы знаем всё'] },
+                            { id: 'r_s2', type: 'boolean', text: 'Расскажешь ли ты мне, если кто-то будет с тобой флиртовать?' },
+                            { id: 'r_s3', type: 'choice', text: 'Твой пароль от телефона:', options: ['Мы знаем пароли друг друга', 'Дам, если попросит', 'Это строго личное'] },
+                            { id: 'r_s4', type: 'boolean', text: 'Ок ли делиться секретами нашей пары с друзьями?' }
+                        ]
+                    }
+                }
+            },
+            'sexy': {
+                id: 'sexy', title: 'Секси (18+)', icon: 'fa-fire', color: 'text-orange-500', desc: 'Интим и фантазии',
+                blocks: {
+                    'rhythm': {
+                        title: 'Ритм и предпочтения', desc: 'Частота и атмосфера',
+                        questions: [
+                            { id: 's_r1', type: 'slider', text: 'Идеальный темп для тебя', labels: ['Плавный/Нежный', 'Жесткий/Грубый'] },
+                            { id: 's_r2', type: 'choice', text: 'Любимое время:', options: ['Утро', 'Глубокая ночь', 'Днем спонтанно', 'В выходные подольше'] },
+                            { id: 's_r3', type: 'boolean', text: 'Важна ли долгая прелюдия (более 15 минут)?' },
+                            { id: 's_r4', type: 'choice', text: 'Что важнее в процессе?', options: ['Страсть и инстинкты', 'Глубокая нежность', 'Техника', 'Эмоциональный коннект'] },
+                            { id: 's_r5', type: 'boolean', text: 'Спонтанный быстрый секс — это круто?' }
+                        ]
+                    },
+                    'taboo': {
+                        title: 'Табу и Границы', desc: 'Что можно, а что нет',
+                        questions: [
+                            { id: 's_t1', type: 'slider', text: 'Открытость к экспериментам', labels: ['Я консерватор', 'Я готов(а) на всё'] },
+                            { id: 's_t2', type: 'boolean', text: 'Ролевые игры с переодеванием?' },
+                            { id: 's_t3', type: 'choice', text: 'Свет во время процесса:', options: ['Люблю при свете', 'Только приглушенный/свечи', 'Полная темнота'] },
+                            { id: 's_t4', type: 'boolean', text: 'Съемка домашнего видео (только для нас)?' }
+                        ]
+                    }
+                }
+            },
+            'future': {
+                id: 'future', title: 'Будущее', icon: 'fa-rocket', color: 'text-purple-400', desc: 'Планы и философия',
+                blocks: {
+                    'goals': {
+                        title: 'Цели и мечты', desc: 'Куда мы идем',
+                        questions: [
+                            { id: 'f_g1', type: 'slider', text: 'Баланс: Карьера vs Семья', labels: ['Карьера важнее', 'Семья на 1 месте'] },
+                            { id: 'f_g2', type: 'choice', text: 'Где жить в старости?', options: ['В центре мегаполиса', 'Домик у моря/озера', 'В лесу/горах', 'Постоянно путешествовать'] },
+                            { id: 'f_g3', type: 'boolean', text: 'Важно ли тебе оставить след в истории или бизнесе?' },
+                            { id: 'f_g4', type: 'choice', text: 'Если мы внезапно разбогатеем:', options: ['Вложим всё в бизнес/инвестиции', 'Купим элитную недвижимость', 'Будем тратить на кайф и жизнь', 'Отдадим часть на благотворительность'] }
+                        ]
+                    }
+                }
+            },
+            'family': {
+                id: 'family', title: 'Семья', icon: 'fa-baby', color: 'text-green-400', desc: 'Дети и родственники',
+                blocks: {
+                    'kids': {
+                        title: 'Дети', desc: 'Взгляды на воспитание',
+                        questions: [
+                            { id: 'fa_k1', type: 'choice', text: 'Сколько детей идеально?', options: ['Пока 0', '1', '2-3', 'Большая семья'] },
+                            { id: 'fa_k2', type: 'slider', text: 'Строгость воспитания', labels: ['Полная свобода', 'Жесткая дисциплина'] },
+                            { id: 'fa_k3', type: 'boolean', text: 'Должны ли бабушки/дедушки активно сидеть с внуками?' },
+                            { id: 'fa_k4', type: 'choice', text: 'Если ребенок получит двойку:', options: ['Сильно поругаю', 'Сяду помогать', 'Забью, оценки не важны', 'Найму репетитора'] }
+                        ]
+                    },
+                    'relatives': {
+                        title: 'Родственники', desc: 'Тещи и Свекрови',
+                        questions: [
+                            { id: 'fa_r1', type: 'slider', text: 'Как часто видеться с родителями?', labels: ['Только по праздникам', 'Каждую неделю'] },
+                            { id: 'fa_r2', type: 'boolean', text: 'Ок ли, если мама приедет в гости без предупреждения?' },
+                            { id: 'fa_r3', type: 'choice', text: 'Чье мнение важнее в споре?', options: ['Моего партнера 100%', 'Мамы/Папы', 'Смотря кто объективно прав'] }
+                        ]
+                    }
+                }
+            },
+            'travel': {
+                id: 'travel', title: 'Отдых', icon: 'fa-plane', color: 'text-yellow-400', desc: 'Отпуск и выходные',
+                blocks: {
+                    'style': {
+                        title: 'Стиль отдыха', desc: 'Как мы расслабляемся',
+                        questions: [
+                            { id: 't_s1', type: 'choice', text: 'Идеальный отпуск:', options: ['Лежать на пляже (all inclusive)', 'Активный туризм (горы/палатки)', 'Евротур (гулять по городам)', 'Гастротур'] },
+                            { id: 't_s2', type: 'slider', text: 'Планирование поездки', labels: ['Строгий график', 'Полный хаос и спонтанность'] },
+                            { id: 't_s3', type: 'boolean', text: 'Выходные дома на диване — это полноценный отдых?' },
+                            { id: 't_s4', type: 'choice', text: 'Сколько тратить на отпуск?', options: ['Бюджетно, ищем скидки', 'Комфортно, но без излишеств', 'Лакшери (на все деньги)'] }
+                        ]
+                    }
+                }
+            },
+            'extreme': {
+                id: 'extreme', title: 'Экстрим', icon: 'fa-bolt', color: 'text-red-500', desc: 'Нестандартные ситуации',
+                blocks: {
+                    'zombie': {
+                        title: 'Зомби Апокалипсис', desc: 'Что будешь делать?',
+                        questions: [
+                            { id: 'e_z1', type: 'choice', text: 'Твое оружие:', options: ['Дробовик', 'Катана', 'Сковородка', 'Я спрячусь'] },
+                            { id: 'e_z2', type: 'slider', text: 'Уровень паники', labels: ['Спокоен как терминатор', 'Ааааа!'] },
+                            { id: 'e_z3', type: 'boolean', text: 'Пожертвуешь собой ради партнера, чтобы он сбежал?' },
+                            { id: 'e_z4', type: 'choice', text: 'Где прятаться?', options: ['В бункере под землей', 'На острове', 'Забаррикадируюсь в супермаркете', 'Уйдем в глухой лес'] },
+                            { id: 'e_z5', type: 'boolean', text: 'Пустишь незнакомца с ребенком в ваше убежище?' }
+                        ]
+                    }
+                }
+            }
+        };
+
+        let app, db, auth;
+        let currentUser = null;
+        let currentPartner = null;
+        let activeSessionId = null;
+        let currentBlockDef = null;
+        let currentTopicId = null;
+        let currentBlockId = null;
+        
+        let currentQuestionIndex = 0;
+        let myAnswers = {};
+        let isAnswering = false; 
+        let isSoloMode = false;
+        let isQuizDone = false; // Блокировка двойных конфетти
+        
+        let sessionUnsubscribe = null;
+        let userUnsubscribe = null;
+        let counterInterval = null;
+
+        window.switchView = (viewId, hideNav = true) => {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            const target = document.getElementById(viewId);
+            if (target) target.classList.add('active');
+            
+            const header = document.getElementById('main-header');
+            const nav = document.getElementById('bottom-nav');
+            
+            if (['view-login', 'view-link'].includes(viewId) || viewId.startsWith('view-quiz') || viewId === 'view-results') {
+                header.style.display = 'none'; header.style.opacity = '0';
+                nav.style.display = 'none';
+            } else {
+                header.style.display = 'flex'; setTimeout(() => header.style.opacity = '1', 50);
+                if (!hideNav) nav.style.display = 'flex';
+            }
+        };
+
+        window.showNavView = (tab) => {
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active', 'text-[#ff007f]'));
+            document.getElementById(`nav-btn-${tab}`).classList.add('active', 'text-[#ff007f]');
+            
+            if(tab === 'topics') { switchView('view-topics', false); renderTopics(); }
+            if(tab === 'history') { switchView('view-history', false); renderHistory(); }
+            if(tab === 'profile') { switchView('view-profile', false); renderProfile(); }
+        };
+
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            
+            auth.onAuthStateChanged(async (user) => {
+                if (user) { await loadUserProfile(user.uid); } 
+                else { switchView('view-login'); }
+            });
+            
+            if (!auth.currentUser) signInAnonymously(auth);
+        } catch (e) {
+            console.error(e);
+            document.getElementById('view-login').innerHTML = '<p class="text-red-400">Ошибка инициализации БД.</p>';
+        }
+
+        async function loadUserProfile(uid) {
+            userUnsubscribe = onSnapshot(doc(db, 'artifacts', appId, 'users', uid), async (docSnap) => {
+                if (docSnap.exists()) {
+                    currentUser = { uid, ...docSnap.data() };
+                    if(!currentUser.completedBlocks) currentUser.completedBlocks = [];
+                    
+                    if (currentUser.partnerId) {
+                        await loadPartnerProfile(currentUser.partnerId);
+                        // Если мы не внутри активного квиза - показываем лобби
+                        if(!activeSessionId) {
+                            showNavView('topics');
+                        }
+                        listenForInvites();
+                        initCounter();
+                        
+                        document.getElementById('header-partner-status').style.display = 'flex';
+                        document.getElementById('hp-name').innerText = currentPartner.name;
+                    } else {
+                        document.getElementById('my-code').innerText = currentUser.linkCode;
+                        switchView('view-link');
+                    }
+                } else {
+                    switchView('view-login');
+                }
+            });
+        }
+
+        async function loadPartnerProfile(partnerUid) {
+            const pSnap = await getDoc(doc(db, 'artifacts', appId, 'users', partnerUid));
+            if (pSnap.exists()) currentPartner = { uid: partnerUid, ...pSnap.data() };
+        }
+
+        window.handleLogin = async () => {
+            const nameInput = document.getElementById('input-name').value.trim();
+            if (!nameInput) return;
+            const btn = document.getElementById('btn-login'); btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+            
+            const linkCode = Math.floor(100000 + Math.random() * 900000).toString();
+            await setDoc(doc(db, 'artifacts', appId, 'users', auth.currentUser.uid), {
+                name: nameInput, linkCode, partnerId: null, dates: { start: null }, completedBlocks: [], createdAt: serverTimestamp()
+            });
+        };
+
+        window.copyCode = () => {
+            navigator.clipboard.writeText(currentUser.linkCode).then(() => {
+                const s = document.getElementById('copy-status');
+                s.innerText = 'Скопировано!'; s.classList.add('text-green-400');
+                setTimeout(() => { s.innerText = 'Нажмите, чтобы скопировать'; s.classList.remove('text-green-400'); }, 2000);
+            });
+        };
+
+        window.linkPartner = async () => {
+            const code = document.getElementById('input-partner-code').value.trim();
+            if (code.length !== 6) return;
+            
+            const btn = document.getElementById('btn-link'); btn.disabled = true;
+            const status = document.getElementById('linking-status'); status.style.display = 'block';
+            
+            const q = query(collection(db, 'artifacts', appId, 'users'), where('linkCode', '==', code));
+            const querySnapshot = await getDocs(q);
+            
+            if (!querySnapshot.empty) {
+                const pId = querySnapshot.docs[0].id;
+                if (pId === currentUser.uid) { status.innerText = 'Это ваш код'; btn.disabled = false; return; }
+                status.innerText = 'Соединяем...';
+                await updateDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid), { partnerId: pId });
+                await updateDoc(doc(db, 'artifacts', appId, 'users', pId), { partnerId: currentUser.uid });
+            } else {
+                status.innerText = 'Код не найден'; status.classList.replace('text-[#00d4ff]', 'text-red-400');
+                setTimeout(() => { status.style.display = 'none'; status.classList.replace('text-red-400', 'text-[#00d4ff]'); btn.disabled = false; }, 2000);
+            }
+        };
+
+        window.logout = async () => {
+            try {
+                if (userUnsubscribe) userUnsubscribe();
+                if (sessionUnsubscribe) sessionUnsubscribe();
+                await signOut(auth);
+                window.location.reload();
+            } catch(e) { console.error(e); }
+        };
+
+        function renderTopics() {
+            const container = document.getElementById('topics-container');
+            container.innerHTML = '';
+            
+            Object.values(QUIZ_DATA).forEach(t => {
+                let totalCompleted = 0;
+                let totalBlocks = Object.keys(t.blocks).length;
+                let partnerWaitingCount = 0;
+
+                Object.keys(t.blocks).forEach(bId => {
+                    const bKey = `${t.id}_${bId}`;
+                    const me = currentUser.completedBlocks.includes(bKey);
+                    const them = currentPartner?.completedBlocks?.includes(bKey);
+                    
+                    if(me) totalCompleted++;
+                    if(!me && them) partnerWaitingCount++; // Партнер прошел, а я нет
+                });
+
+                const card = document.createElement('div');
+                card.className = "glass-card p-4 rounded-3xl cursor-pointer hover:bg-white/5 btn-alive flex flex-col justify-between aspect-square relative overflow-hidden";
+                card.onclick = () => openTopic(t.id);
+                
+                const progressPct = (totalCompleted / totalBlocks) * 100;
+                
+                let badgeHtml = '';
+                if (partnerWaitingCount > 0) {
+                    badgeHtml = `<div class="absolute top-3 right-3 bg-[#ff007f] text-white text-[9px] px-2 py-0.5 rounded-full font-medium shadow-lg animate-pulse">Партнер ждет! (${partnerWaitingCount})</div>`;
+                }
+                
+                card.innerHTML = `
+                    <div class="absolute top-0 left-0 w-full h-1 bg-white/5"><div class="h-full bg-[#ff007f] opacity-60 transition-all duration-500" style="width: ${progressPct}%"></div></div>
+                    ${badgeHtml}
+                    <div class="w-12 h-12 rounded-full bg-black/40 flex items-center justify-center text-xl ${t.color} mb-2 shadow-inner"><i class="fa-solid ${t.icon}"></i></div>
+                    <div>
+                        <h4 class="font-medium text-sm text-white/90 leading-tight">${t.title}</h4>
+                        <p class="text-[9px] text-gray-500 uppercase mt-1">${totalCompleted}/${totalBlocks} Блоков</p>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function openTopic(tId) {
+            currentTopicId = tId;
+            const t = QUIZ_DATA[tId];
+            switchView('view-blocks', false);
+            
+            document.getElementById('block-view-title').innerText = t.title;
+            document.getElementById('block-view-desc').innerText = t.desc;
+            document.getElementById('block-view-icon').innerHTML = `<i class="fa-solid ${t.icon} ${t.color}"></i>`;
+            
+            const container = document.getElementById('blocks-container');
+            container.innerHTML = '';
+            
+            Object.entries(t.blocks).forEach(([bId, b]) => {
+                const bKey = `${tId}_${bId}`;
+                const me = currentUser.completedBlocks.includes(bKey);
+                const them = currentPartner?.completedBlocks?.includes(bKey);
+                
+                let statusHtml = `<i class="fa-solid fa-chevron-right text-gray-600 text-sm"></i>`;
+                if (me && them) {
+                    statusHtml = `<div class="w-6 h-6 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center text-xs"><i class="fa-solid fa-check"></i></div>`;
+                } else if (me && !them) {
+                    statusHtml = `<span class="text-[9px] text-gray-500">Вы прошли</span>`;
+                } else if (!me && them) {
+                    statusHtml = `<span class="bg-[#ff007f]/20 text-[#ff007f] text-[9px] px-2 py-1 rounded-md font-medium animate-pulse">Партнер прошел</span>`;
+                }
+                
+                const card = document.createElement('div');
+                card.className = "glass-card p-4 rounded-2xl cursor-pointer hover:bg-white/5 btn-alive flex items-center justify-between";
+                card.onclick = () => handleBlockClick(tId, bId);
+                
+                card.innerHTML = `
+                    <div>
+                        <h4 class="font-medium text-sm text-gray-200">${b.title}</h4>
+                        <p class="text-[10px] text-gray-500 mt-0.5">${b.desc} • ${b.questions.length} вопр.</p>
+                    </div>
+                    ${statusHtml}
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function handleBlockClick(tId, bId) {
+            currentTopicId = tId; currentBlockId = bId;
+            currentBlockDef = QUIZ_DATA[tId].blocks[bId];
+            const blockKey = `${tId}_${bId}`;
+            
+            const me = currentUser.completedBlocks.includes(blockKey);
+            const them = currentPartner?.completedBlocks?.includes(blockKey);
+            
+            if (me && them) {
+                if(confirm("Вы оба уже прошли этот квиз. Хотите сбросить прогресс и пройти заново?")) {
+                    startQuizInit('pair', true); // Начинаем заново с очисткой
+                } else {
+                    const pairId = [currentUser.uid, currentPartner.uid].sort().join('_');
+                    activeSessionId = `session_${pairId}_${blockKey}`;
+                    goToResults(); // Показываем старые результаты
+                }
+            } else if (me && !them) {
+                alert("Вы уже прошли этот квиз. Ждем, пока партнер тоже его пройдет!");
+                const pairId = [currentUser.uid, currentPartner?.uid].sort().join('_');
+                activeSessionId = `session_${pairId}_${blockKey}`;
+                goToResults(); 
+            } else if (!me && them) {
+                // Партнер прошел, мы нет. Сразу запускаем квиз без выбора "соло/пара", так как партнер уже не онлайн
+                startQuizInit('solo', false);
+            } else {
+                showQuizModeSelect();
+            }
+        }
+
+        function showQuizModeSelect() {
+            switchView('view-quiz-mode');
+            document.getElementById('mode-block-title').innerText = currentBlockDef.title;
+        }
+        window.closeQuizMode = () => { showNavView('topics'); };
+
+        function renderProfile() {
+            document.getElementById('profile-name').innerText = currentUser.name;
+            document.getElementById('edit-my-name').value = currentUser.name;
+            if(currentPartner) document.getElementById('profile-partner-name').innerText = currentPartner.name;
+            if(currentUser.dates && currentUser.dates.start) document.getElementById('date-start').value = currentUser.dates.start;
+        }
+
+        window.saveProfile = async () => {
+            const sd = document.getElementById('date-start').value;
+            const newName = document.getElementById('edit-my-name').value.trim();
+            
+            const updates = {};
+            if(sd) updates['dates.start'] = sd;
+            if(newName) updates['name'] = newName;
+            
+            if(Object.keys(updates).length > 0) {
+                await updateDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid), updates);
+                if(sd && currentPartner) {
+                    await updateDoc(doc(db, 'artifacts', appId, 'users', currentPartner.uid), { 'dates.start': sd });
+                }
+                alert("Настройки сохранены!");
+            }
+        };
+
+        function initCounter() {
+            if(counterInterval) clearInterval(counterInterval);
+            counterInterval = setInterval(() => {
+                if(!currentUser?.dates?.start) return;
+                const diff = new Date().getTime() - new Date(currentUser.dates.start).getTime();
+                if(diff < 0) return;
+                document.getElementById('cnt-days').innerText = Math.floor(diff / (1000*60*60*24));
+                document.getElementById('cnt-hours').innerText = Math.floor((diff % (1000*60*60*24))/(1000*60*60));
+                document.getElementById('cnt-mins').innerText = Math.floor((diff % (1000*60*60))/(1000*60));
+                document.getElementById('cnt-secs').innerText = Math.floor((diff % (1000*60))/1000);
+            }, 1000);
+        }
+
+        async function renderHistory() {
+            const container = document.getElementById('history-container');
+            container.innerHTML = '<div class="text-center text-gray-500 mt-10"><i class="fa-solid fa-circle-notch fa-spin"></i> Загрузка...</div>';
+            
+            const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'sessions'), 
+                where(`users.${currentUser.uid}.status`, '==', 'finished'));
+            const snaps = await getDocs(q);
+            
+            container.innerHTML = '';
+            if(snaps.empty) {
+                container.innerHTML = '<p class="text-sm text-gray-500 text-center mt-10">История пока пуста.</p>'; return;
+            }
+
+            snaps.forEach(docSnap => {
+                const data = docSnap.data();
+                if(data.status !== 'finished') return; 
+                
+                const parts = data.topic.split('_');
+                const tId = parts[0]; const bId = parts[1];
+                const tName = QUIZ_DATA[tId]?.title || 'Неизвестно';
+                const bName = QUIZ_DATA[tId]?.blocks[bId]?.title || 'Блок';
+                const modeText = data.mode === 'solo' ? 'Соло' : 'В паре';
+
+                const card = document.createElement('div');
+                card.className = "glass-card p-4 rounded-2xl cursor-pointer hover:bg-white/5 btn-alive border border-white/5";
+                card.onclick = () => showResultsUI(data, QUIZ_DATA[tId].blocks[bId]);
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-[10px] text-[#00d4ff] bg-[#00d4ff]/10 px-2 py-1 rounded-md">${tName}</span>
+                    </div>
+                    <h4 class="font-medium text-sm text-white/90">${bName}</h4>
+                    <p class="text-[10px] text-gray-500 mt-1">Нажмите, чтобы посмотреть ответы и анализ</p>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        window.startQuizInit = async (mode, wipe = false) => {
+            isSoloMode = (mode === 'solo');
+            const fullTopicId = `${currentTopicId}_${currentBlockId}`;
+            // Уникальный ID сессии для пары и блока, чтобы склеивать результаты!
+            const pairId = [currentUser.uid, (currentPartner?currentPartner.uid:'solo')].sort().join('_');
+            activeSessionId = `session_${pairId}_${fullTopicId}`;
+            isQuizDone = false;
+            
+            switchView('view-quiz-waiting');
+            document.getElementById('waiting-title').innerText = isSoloMode ? "Подготовка..." : "Ожидаем партнера";
+            
+            const sessionRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', activeSessionId);
+            const sessionSnap = await getDoc(sessionRef);
+            
+            let sessionData = {};
+            if (sessionSnap.exists() && !wipe) {
+                sessionData = sessionSnap.data();
+            } else {
+                sessionData = { topic: fullTopicId, createdAt: serverTimestamp(), users: {} };
+            }
+
+            const partnerFinished = currentPartner && sessionData.users?.[currentPartner.uid]?.status === 'finished';
+
+            sessionData.status = (isSoloMode || partnerFinished) ? 'active' : 'waiting';
+            sessionData.mode = mode;
+            if(!sessionData.users) sessionData.users = {};
+            sessionData.users[currentUser.uid] = { progress: 0, answers: {}, status: 'joined' };
+            
+            if (!isSoloMode && currentPartner && !partnerFinished) {
+                sessionData.users[currentPartner.uid] = { progress: 0, answers: {}, status: 'invited' };
+            }
+
+            await setDoc(sessionRef, sessionData);
+            listenToActiveSession();
+        };
+
+        function listenForInvites() {
+            const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'sessions'), where('status', '==', 'waiting'));
+            onSnapshot(q, (snapshot) => {
+                let foundInvite = null;
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    if (data.users[currentUser.uid]?.status === 'invited') {
+                        foundInvite = { id: docSnap.id, ...data };
+                    }
+                });
+                
+                const alertEl = document.getElementById('partner-invite-alert');
+                if (foundInvite && !activeSessionId) { // Показываем приглашение только если не играем сейчас
+                    activeSessionId = foundInvite.id;
+                    const parts = foundInvite.topic.split('_');
+                    const t = QUIZ_DATA[parts[0]];
+                    if(t) {
+                        currentTopicId = parts[0]; currentBlockId = parts[1];
+                        currentBlockDef = t.blocks[parts[1]];
+                        document.getElementById('invite-topic-name').innerText = currentBlockDef.title;
+                        alertEl.classList.remove('hidden'); alertEl.classList.add('flex');
+                    }
+                } else {
+                    alertEl.classList.add('hidden'); alertEl.classList.remove('flex');
+                }
+            });
+        }
+
+        window.acceptInvite = async () => {
+            isSoloMode = false;
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'sessions', activeSessionId), { 
+                status: 'active', [`users.${currentUser.uid}.status`]: 'joined' 
+            });
+            document.getElementById('partner-invite-alert').classList.add('hidden');
+            listenToActiveSession();
+        };
+
+        window.cancelQuiz = async () => {
+            if (activeSessionId) {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'sessions', activeSessionId), { status: 'cancelled' });
+            }
+            activeSessionId = null;
+            showNavView('topics');
+        };
+
+        function listenToActiveSession() {
+            if (sessionUnsubscribe) sessionUnsubscribe();
+            
+            sessionUnsubscribe = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'sessions', activeSessionId), (docSnap) => {
+                if (!docSnap.exists()) return;
+                const data = docSnap.data();
+                
+                if (data.status === 'cancelled') { alert('Сессия отменена.'); activeSessionId = null; showNavView('topics'); return; }
+
+                if (data.status === 'active') {
+                    if (!document.getElementById('view-quiz-active').classList.contains('active')) {
+                        startQuizUI();
+                    }
+                    
+                    if (!isSoloMode && currentPartner && data.users[currentPartner.uid]) {
+                        const pData = data.users[currentPartner.uid];
+                        document.getElementById('partner-status-box').style.display = 'flex';
+                        if (pData.status === 'finished') {
+                            document.getElementById('partner-quiz-status').innerText = "Партнер завершил! Ждет вас.";
+                        } else {
+                            document.getElementById('partner-quiz-status').innerHTML = `Партнер отвечает <span class="typing-dots"><span></span><span></span><span></span></span>`;
+                        }
+                    } else {
+                        document.getElementById('partner-status-box').style.display = 'none';
+                    }
+                }
+                
+                if (data.status === 'finished') {
+                    showCompletionPopup();
+                }
+            });
+        }
+
+        function startQuizUI() {
+            isQuizDone = false;
+            currentQuestionIndex = 0; myAnswers = {}; isAnswering = false;
+            switchView('view-quiz-active');
+            document.getElementById('quiz-active-category').innerText = currentBlockDef.title;
+            document.getElementById('q-total').innerText = currentBlockDef.questions.length;
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            if (currentQuestionIndex >= currentBlockDef.questions.length) {
+                finishMyPart();
+                return;
+            }
+
+            const q = currentBlockDef.questions[currentQuestionIndex];
+            document.getElementById('q-current').innerText = currentQuestionIndex + 1;
+            document.getElementById('question-text').innerText = q.text;
+            
+            const pct = ((currentQuestionIndex) / currentBlockDef.questions.length) * 100;
+            document.getElementById('quiz-progress-bar').style.width = `${pct}%`;
+
+            const container = document.getElementById('answers-container');
+            container.style.opacity = '0';
+            
+            setTimeout(() => {
+                container.innerHTML = '';
+                if (q.type === 'slider') {
+                    // Новый красивый формат: 7 кнопок-уровней вместо ползунка
+                    let dots = '';
+                    for(let i=1; i<=7; i++) {
+                        dots += `<button onclick="saveAnswer('slider', ${i})" class="h-14 flex-1 rounded-2xl glass-card border border-white/5 hover:border-[#ff007f] hover:bg-[#ff007f]/20 focus:bg-[#ff007f] focus:text-white transition-all mx-0.5 sm:mx-1 text-lg font-medium text-white/60 hover:text-white btn-alive">${i}</button>`;
+                    }
+                    container.innerHTML = `
+                        <div class="glass-card p-4 sm:p-6 rounded-3xl text-center border-[#00d4ff]/10 shadow-[0_0_20px_rgba(0,212,255,0.05)]">
+                            <div class="flex justify-between text-[11px] text-[#00d4ff] mb-6 font-medium uppercase tracking-wider">
+                                <span class="w-1/2 text-left">${q.labels[0]}</span>
+                                <span class="w-1/2 text-right">${q.labels[1]}</span>
+                            </div>
+                            <div class="flex justify-between items-center w-full mb-2">
+                                ${dots}
+                            </div>
+                            <p class="text-[10px] text-gray-500 mt-4 font-light uppercase tracking-widest">Выберите значение</p>
+                        </div>
+                    `;
+                } else if (q.type === 'boolean') {
+                    container.innerHTML = `
+                        <div class="grid grid-cols-2 gap-3">
+                            <button onclick="saveAnswer('boolean', 'Да')" class="py-8 rounded-3xl glass-card border-white/5 hover:border-[#ff007f] hover:bg-[#ff007f]/10 btn-alive text-xl font-medium text-white shadow-lg">Да</button>
+                            <button onclick="saveAnswer('boolean', 'Нет')" class="py-8 rounded-3xl glass-card border-white/5 hover:border-[#7000ff] hover:bg-[#7000ff]/10 btn-alive text-xl font-medium text-white shadow-lg">Нет</button>
+                        </div>
+                    `;
+                } else if (q.type === 'choice') {
+                    q.options.forEach(opt => {
+                        const btn = document.createElement('button');
+                        btn.className = "w-full py-5 px-6 rounded-3xl glass-card text-left font-light hover:bg-white/10 btn-alive flex items-center justify-between group text-sm text-gray-200 border border-white/5";
+                        btn.innerHTML = `<span>${opt}</span> <div class="w-4 h-4 rounded-full border border-gray-500 group-hover:border-[#ff007f] group-hover:bg-[#ff007f] transition-all"></div>`;
+                        btn.onclick = () => saveAnswer('choice', opt);
+                        container.appendChild(btn);
+                    });
+                }
+                container.style.opacity = '1';
+                isAnswering = false;
+            }, 300);
+        }
+
+        window.saveAnswer = (type, value) => {
+            if(isAnswering) return; 
+            isAnswering = true;
+            
+            const q = currentBlockDef.questions[currentQuestionIndex];
+            myAnswers[q.id] = { text: q.text, answer: value };
+            
+            // Отправляем прогресс (партнер увидит, что мы ответили)
+            updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'sessions', activeSessionId), {
+                [`users.${currentUser.uid}.progress`]: currentQuestionIndex + 1
+            });
+            
+            const container = document.getElementById('answers-container');
+            container.style.opacity = '0.3';
+            
+            setTimeout(() => {
+                currentQuestionIndex++;
+                renderQuestion();
+            }, 400);
+        };
+
+        async function finishMyPart() {
+            isAnswering = true;
+            document.getElementById('quiz-progress-bar').style.width = `100%`;
+            
+            const sessionRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', activeSessionId);
+            await updateDoc(sessionRef, {
+                [`users.${currentUser.uid}.progress`]: currentBlockDef.questions.length,
+                [`users.${currentUser.uid}.status`]: 'finished',
+                [`users.${currentUser.uid}.answers`]: myAnswers
+            });
+            
+            const blockKey = `${currentTopicId}_${currentBlockId}`;
+            if (!currentUser.completedBlocks.includes(blockKey)) {
+                await updateDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid), {
+                    completedBlocks: [...currentUser.completedBlocks, blockKey]
+                });
+            }
+
+            const snap = await getDoc(sessionRef);
+            const data = snap.data();
+            
+            let allFinished = true;
+            if(!isSoloMode && currentPartner) {
+                const pData = data.users[currentPartner.uid];
+                if (!pData || pData.status !== 'finished') allFinished = false;
+            }
+
+            if (allFinished) {
+                await updateDoc(sessionRef, { status: 'finished' });
+                showCompletionPopup();
+            } else {
+                switchView('view-quiz-waiting');
+                document.getElementById('waiting-title').innerText = "Готово!";
+                document.getElementById('waiting-desc').innerText = "Ожидаем завершения от партнера...";
+            }
+        }
+
+        function showCompletionPopup() {
+            if(isQuizDone) return; // Защита от двойного выстрела конфетти
+            isQuizDone = true;
+            switchView('view-quiz-done');
+            const popup = document.getElementById('done-popup');
+            setTimeout(() => { popup.style.transform = 'scale(1)'; shootConfetti(); }, 50);
+        }
+
+        function shootConfetti() {
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            let particles = [];
+            for(let i=0; i<120; i++) {
+                particles.push({
+                    x: canvas.width/2, y: canvas.height/2,
+                    vx: (Math.random()-0.5)*25, vy: (Math.random()-0.5)*25 - 5,
+                    size: Math.random()*8+4, color: `hsl(${Math.random()*360}, 100%, 50%)`
+                });
+            }
+            function draw() {
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                let active = false;
+                particles.forEach(p => {
+                    p.x += p.vx; p.y += p.vy; p.vy += 0.5; // gravity
+                    ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.size, p.size);
+                    if(p.y < canvas.height) active = true;
+                });
+                if(active) requestAnimationFrame(draw);
+                else ctx.clearRect(0,0,canvas.width,canvas.height);
+            }
+            draw();
+        }
+
+        window.goToResults = () => {
+            const sessionRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', activeSessionId);
+            getDoc(sessionRef).then(snap => showResultsUI(snap.data(), currentBlockDef));
+        };
+
+        window.closeResults = () => {
+            if(sessionUnsubscribe) sessionUnsubscribe();
+            activeSessionId = null;
+            showNavView('topics');
+        };
+
+        async function showResultsUI(sessionData, blockDef) {
+            switchView('view-results');
+            document.getElementById('res-title').innerText = blockDef.title;
+            
+            const myData = sessionData.users[currentUser.uid]?.answers || {};
+            let pData = {};
+            let pName = "Партнер";
+            let isPartnerFinished = false;
+
+            if(currentPartner) {
+                pName = currentPartner.name;
+                if (sessionData.users[currentPartner.uid]?.status === 'finished') {
+                    pData = sessionData.users[currentPartner.uid]?.answers || {};
+                    isPartnerFinished = true;
+                }
+            }
+            
+            const compContainer = document.getElementById('comparison-container');
+            compContainer.innerHTML = '';
+            
+            blockDef.questions.forEach((q, idx) => {
+                const myAns = myData[q.id]?.answer || '-';
+                const pAns = isPartnerFinished ? (pData[q.id]?.answer || '-') : 'Скрыто (не завершил)';
+                
+                const isMatch = isPartnerFinished && (String(myAns) === String(pAns));
+                const borderClass = isMatch ? 'border-[#00d4ff]/40' : 'border-white/5';
+                
+                const card = document.createElement('div');
+                card.className = `p-4 rounded-2xl border ${borderClass} bg-black/30`;
+                
+                let pBlock = sessionData.mode === 'solo' ? '' : `
+                    <div class="${isMatch?'bg-[#00d4ff]/10':'bg-white/5'} p-3 rounded-xl text-center">
+                        <span class="block text-[9px] text-gray-500 mb-1 uppercase tracking-wider">${pName}</span>
+                        <span class="font-medium text-white text-sm">${pAns}</span>
+                    </div>`;
+
+                card.innerHTML = `
+                    <p class="text-xs font-medium mb-3 text-gray-200">${idx+1}. ${q.text}</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="${isMatch?'bg-[#00d4ff]/10':'bg-white/5'} p-3 rounded-xl text-center flex flex-col justify-center">
+                            <span class="block text-[9px] text-gray-500 mb-1 uppercase tracking-wider">${currentUser.name}</span>
+                            <span class="font-medium text-white text-sm">${myAns}</span>
+                        </div>
+                        <div class="${isMatch?'bg-[#00d4ff]/10':'bg-white/5'} p-3 rounded-xl text-center flex flex-col justify-center">
+                            <span class="block text-[9px] text-gray-500 mb-1 uppercase tracking-wider">${pName}</span>
+                            <span class="font-medium ${isPartnerFinished ? 'text-white' : 'text-gray-600'} text-sm">${pAns}</span>
+                        </div>
+                    </div>
+                `;
+                compContainer.appendChild(card);
+            });
+            
+            // AI Analysis (только если оба завершили)
+            if (!sessionData.aiAnalysis) {
+                if (isPartnerFinished) {
+                    // Анализируем только если инициатор - мы, чтобы не делать 2 запроса
+                    analyzeWithAI(blockDef.title, myData, pData, pName, sessionData.id || activeSessionId);
+                } else {
+                    document.getElementById('ai-loading').style.display = 'none';
+                    document.getElementById('ai-report').style.display = 'block';
+                    document.getElementById('ai-content').innerHTML = '<p class="text-gray-500 text-center">Анализ ИИ будет доступен, когда оба партнера завершат квиз.</p>';
+                }
+            } else {
+                renderAIReport(sessionData.aiAnalysis);
+            }
+        }
+
+        async function analyzeWithAI(topic, myData, pData, pName, sId) {
+                answersText += `Вопрос: ${myData[k].text}\n${currentUser.name}: ${myData[k].answer}\n`;
+                if(mode !== 'solo') answersText += `${pName}: ${pData[k]?.answer}\n`;
+                answersText += "\n";
+            });
+
+            let prompt = "";
+            prompt = `Ты ИИ-семейный психолог. Проанализируй ответы пары (${currentUser.name} и ${pName}) на тему "${topic}". Выдели где они сходятся, где могут быть конфликты и дай совет. Пиши емко, красиво. Формат HTML (<p>, <b>, <ul>, без \`\`\`).\nОтветы:\n${answersText}`;
+
+            try {
+                const response = await fetch(OPENAI_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_API_KEY}` },
+                    body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{role: 'user', content: prompt}], temperature: 0.7 })
+                });
+
+                const json = await response.json();
+                if (json.choices && json.choices.length > 0) {
+                    const aiHtml = json.choices[0].message.content;
+                    if(sId) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sId), { aiAnalysis: aiHtml });
+                    renderAIReport(aiHtml);
+                }
+            } catch (e) {
+                console.error(e);
+                document.getElementById('ai-loading').style.display = 'none';
+            }
+        }
+
+        function renderAIReport(htmlString) {
+            document.getElementById('ai-loading').style.display = 'none';
+            document.getElementById('ai-report').style.display = 'block';
+            document.getElementById('ai-content').innerHTML = htmlString.replace(/```html/g, '').replace(/```/g, '');
+        }
+
+    </script>
+</body>
+</html>
