@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SoulSync | Квиз для пар</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #0b0710;
+            color: #ffffff;
+            position: fixed; inset: 0; width: 100vw; height: 100dvh; overflow: hidden;
+        }
+        .bg-auras {
+            position: absolute; inset: 0; z-index: -1;
+            background: radial-gradient(circle at 50% 30%, #2c1b3d 0%, #0b0710 80%);
+            overflow: hidden; pointer-events: none;
+        }
+        .aura {
+            position: absolute; border-radius: 50%; filter: blur(120px); opacity: 0.45;
+            animation: float 18s infinite ease-in-out alternate;
+        }
+        .aura-1 { width: 70vw; height: 70vw; background: rgba(255, 0, 127, 0.15); top: -15%; left: -10%; }
+        .aura-2 { width: 80vw; height: 80vw; background: rgba(112, 0, 255, 0.15); bottom: -20%; right: -10%; animation-delay: -6s; }
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(4vw, 4vh) scale(1.08); }
+            100% { transform: translate(-4vw, 2vh) scale(0.92); }
+        }
+        .glass-panel {
+            background: rgba(18, 13, 26, 0.75);
+            backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.035);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card:active { transform: scale(0.98); }
+        .glass-input {
+            background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(255, 255, 255, 0.12);
+            color: white; transition: all 0.3s ease; user-select: text;
+        }
+        .glass-input:focus {
+            outline: none; border-color: rgba(255, 0, 127, 0.6); background: rgba(0, 0, 0, 0.65);
+            box-shadow: 0 0 20px rgba(255, 0, 127, 0.2);
+        }
+        .btn-alive { transition: transform 0.15s ease, background-color 0.25s, border-color 0.25s; cursor: pointer; }
+        .btn-alive:active { transform: scale(0.95); }
+        .btn-primary {
+            background: linear-gradient(135deg, #ff007f 0%, #7000ff 100%);
+            border: none; color: white; box-shadow: 0 8px 25px rgba(255, 0, 127, 0.35);
+        }
+        .btn-secondary { background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); }
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        .view-section { display: none; height: 100%; flex-direction: column; }
+        .view-section.active { display: flex; animation: fadeIn 0.25s ease forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
+        .pop-animation { animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.25) forwards; }
+        #confetti-canvas { pointer-events: none; z-index: 99999; position: absolute; top:0; left:0; width:100%; height:100%; }
+        .typing-dots span {
+            animation: bounce 1.4s infinite ease-in-out both;
+            display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #ff007f; margin: 0 2px;
+        }
+        .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce { 
+            0%, 80%, 100% { transform: translateY(0); opacity: 0.4; } 
+            40% { transform: translateY(-5px); opacity: 1; } 
+        }
+    </style>
+</head>
+<body class="antialiased flex items-center justify-center sm:p-4 w-full h-full text-white">
+
+    <div class="bg-auras">
+        <div class="aura aura-1"></div><div class="aura aura-2"></div>
+    </div>
+    <canvas id="confetti-canvas"></canvas>
+
+    <div id="app-container" class="w-full h-full sm:h-[94vh] sm:max-w-md sm:rounded-[36px] rounded-none glass-panel flex flex-col relative overflow-hidden shadow-2xl">
+        
+        <!-- Header -->
+        <header class="flex justify-between items-center px-5 py-4 border-b border-white/5 z-10 shrink-0" id="main-header" style="display: none;">
+            <div class="flex items-center gap-3">
+                <div id="header-my-avatar" class="w-9 h-9 rounded-full bg-cover bg-center border border-white/20 flex items-center justify-center text-xs font-bold text-white shadow-md"></div>
+                <h1 class="text-lg font-semibold tracking-wide text-white/90">SoulSync</h1>
+            </div>
+            <div id="header-partner-status" class="hidden items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-gray-300">
+                <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div> 
+                <span id="hp-name">Партнер</span>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 overflow-y-auto relative p-5 pb-8" id="content-area">
+            
+            <!-- Loading -->
+            <div id="view-loading" class="view-section active justify-center items-center text-center">
+                <div class="w-24 h-24 mb-6 rounded-full glass-card flex items-center justify-center text-4xl text-[#ff007f] shadow-[0_0_35px_rgba(255,0,127,0.2)] mx-auto animate-pulse">
+                    <i class="fa-solid fa-heart"></i>
+                </div>
+                <h2 class="text-2xl font-semibold mb-2 text-white">SoulSync</h2>
+                <p class="text-gray-400 text-sm font-light">Синхронизация сердец...</p>
+            </div>
+
+            <!-- Login / Profile Setup -->
+            <div id="view-login" class="view-section justify-center items-center text-center">
+                <div class="w-24 h-24 mb-6 rounded-full glass-card flex items-center justify-center text-3xl text-[#ff007f] mx-auto pop-animation border border-white/10 shadow-xl overflow-hidden relative">
+                    <img id="login-avatar-preview" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" class="w-full h-full object-cover">
+                </div>
+                <h2 class="text-2xl font-semibold mb-1 text-white">Добро пожаловать</h2>
+                <p class="text-gray-400 mb-8 text-xs font-light">Введите имя и выберите аватарку</p>
+                
+                <div class="w-full max-w-xs mx-auto space-y-4">
+                    <input type="text" id="input-name" placeholder="Ваше имя" class="w-full px-5 py-3.5 rounded-2xl glass-input text-center font-medium text-sm">
+                    
+                    <div class="flex gap-2 justify-center">
+                        <button type="button" onclick="setAvatarChoice('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150')" class="w-12 h-12 rounded-full overflow-hidden border-2 border-transparent focus:border-[#ff007f] transition-all"><img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" class="w-full h-full object-cover"></button>
+                        <button type="button" onclick="setAvatarChoice('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150')" class="w-12 h-12 rounded-full overflow-hidden border-2 border-transparent focus:border-[#ff007f] transition-all"><img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150" class="w-full h-full object-cover"></button>
+                        <button type="button" onclick="setAvatarChoice('https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150')" class="w-12 h-12 rounded-full overflow-hidden border-2 border-transparent focus:border-[#ff007f] transition-all"><img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150" class="w-full h-full object-cover"></button>
+                        <button type="button" onclick="setAvatarChoice('https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150')" class="w-12 h-12 rounded-full overflow-hidden border-2 border-transparent focus:border-[#ff007f] transition-all"><img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150" class="w-full h-full object-cover"></button>
+                    </div>
+
+                    <button id="btn-login" onclick="handleLogin()" class="w-full py-4 rounded-2xl btn-alive btn-primary font-semibold text-sm tracking-wide">Продолжить</button>
+                </div>
+            </div>
+
+            <!-- Linking Partner -->
+            <div id="view-link" class="view-section justify-center items-center text-center">
+                <div class="w-16 h-16 mb-6 rounded-full glass-card flex items-center justify-center text-2xl text-[#7000ff] mx-auto pop-animation">
+                    <i class="fa-solid fa-link"></i>
+                </div>
+                <h2 class="text-xl font-semibold mb-6 text-white">Создание связи</h2>
+                
+                <div class="w-full max-w-xs mx-auto p-5 mb-5 rounded-3xl bg-black/30 border border-white/5 relative">
+                    <p class="text-[11px] text-gray-400 mb-2 font-light">Ваш код для приглашения:</p>
+                    <div class="text-4xl font-mono tracking-widest font-semibold text-white mb-2 cursor-pointer btn-alive select-all" id="my-code" onclick="copyCode()">------</div>
+                    <p class="text-xs text-[#ff007f] opacity-90" id="copy-status">Нажмите, чтобы скопировать</p>
+                </div>
+
+                <div class="w-full max-w-xs mx-auto flex items-center gap-3 mb-5 opacity-40">
+                    <div class="h-px bg-white flex-1"></div><span class="text-xs font-light">ИЛИ</span><div class="h-px bg-white flex-1"></div>
+                </div>
+
+                <div class="w-full max-w-xs mx-auto space-y-3">
+                    <input type="text" id="input-partner-code" maxlength="6" placeholder="Код партнера" class="w-full px-5 py-3.5 rounded-2xl glass-input text-center font-mono text-xl tracking-[0.25em] uppercase">
+                    <button id="btn-link" onclick="linkPartner()" class="w-full py-3.5 rounded-2xl btn-alive btn-primary font-semibold text-sm">Соединить</button>
+                </div>
+                <div id="linking-status" class="mt-4 text-xs text-[#00d4ff] hidden"><i class="fa-solid fa-circle-notch fa-spin mr-1.5"></i>Ожидание партнера...</div>
+            </div>
+
+            <!-- Main Hub: Topics & Daily Quiz -->
+            <div id="view-topics" class="view-section">
+                <!-- Daily Quiz Card -->
+                <div id="daily-quiz-card" class="glass-card p-5 rounded-[28px] mb-5 relative overflow-hidden btn-alive cursor-pointer border border-[#00d4ff]/30" onclick="openDailyQuiz()">
+                    <div class="absolute -right-6 -bottom-6 w-28 h-28 bg-[#00d4ff] rounded-full blur-[50px] opacity-20"></div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[10px] font-bold text-[#00d4ff] bg-[#00d4ff]/10 px-2.5 py-1 rounded-lg uppercase tracking-wide"><i class="fa-solid fa-calendar-day mr-1"></i> Ежедневный квиз</span>
+                        <span id="daily-timer" class="text-[10px] text-gray-400 font-mono">Обновление в 11:00</span>
+                    </div>
+                    <h3 id="daily-title" class="text-base font-semibold text-white mb-1">Вопрос дня для пары</h3>
+                    <p class="text-xs text-gray-400 font-light">Синхронизируйте свои мысли сегодня</p>
+                </div>
+
+                <!-- Notification Feed ("Ждет тебя") -->
+                <div id="notifications-section" class="hidden mb-6 space-y-2">
+                    <div class="flex items-center justify-between px-1">
+                        <span class="text-[11px] font-bold text-[#ff007f] uppercase tracking-wider"><i class="fa-solid fa-bell mr-1.5"></i> Ждет вас / Пройдено партнером</span>
+                    </div>
+                    <div id="notifications-list" class="space-y-2"></div>
+                </div>
+
+                <h2 class="text-xl font-semibold mb-1 text-white/90">Все темы квизов</h2>
+                <p class="text-xs text-gray-400 font-light mb-5">7 больших категорий, 7+ блоков в каждой</p>
+                
+                <div id="topics-container" class="grid grid-cols-2 gap-3.5 pb-6"></div>
+            </div>
+
+            <!-- Blocks View -->
+            <div id="view-blocks" class="view-section">
+                <button onclick="showNavView('topics')" class="text-gray-400 text-xs mb-4 flex items-center gap-2 hover:text-white btn-alive w-fit"><i class="fa-solid fa-arrow-left"></i> Назад к темам</button>
+                <div class="flex items-center gap-3.5 mb-5">
+                    <div id="block-view-icon" class="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-xl shrink-0 border border-white/10"></div>
+                    <div>
+                        <h2 id="block-view-title" class="text-lg font-semibold text-white leading-tight"></h2>
+                        <p id="block-view-desc" class="text-xs text-gray-400 font-light"></p>
+                    </div>
+                </div>
+                <div id="blocks-container" class="space-y-3 pb-6"></div>
+            </div>
+
+            <!-- History / Answers View -->
+            <div id="view-history" class="view-section">
+                <h2 class="text-xl font-semibold mb-1 text-white/90">История и ответы</h2>
+                <p class="text-xs text-gray-400 font-light mb-5">Все пройденные квизы (от новых к старым)</p>
+                <div id="history-container" class="space-y-3.5 pb-6"></div>
+            </div>
+
+            <!-- Profile View -->
+            <div id="view-profile" class="view-section">
+                <h2 class="text-xl font-semibold mb-5 text-white/90">Профиль и Пара</h2>
+                
+                <div class="glass-card p-6 rounded-[28px] mb-5 text-center relative overflow-hidden">
+                    <div class="flex justify-center items-center gap-4 mb-4">
+                        <div class="w-16 h-16 rounded-full border-2 border-[#ff007f] overflow-hidden shadow-lg">
+                            <img id="profile-my-avatar" src="" class="w-full h-full object-cover">
+                        </div>
+                        <div class="text-xl text-[#ff007f]"><i class="fa-solid fa-heart animate-pulse"></i></div>
+                        <div class="w-16 h-16 rounded-full border-2 border-[#00d4ff] overflow-hidden shadow-lg">
+                            <img id="profile-partner-avatar" src="https://placehold.co/150x150/2c1b3d/00d4ff?text=?" class="w-full h-full object-cover">
+                        </div>
+                    </div>
+                    <h3 class="text-lg font-semibold text-white" id="profile-name">Имя</h3>
+                    <p class="text-xs text-gray-400 mt-0.5">В паре с: <span id="profile-partner-name" class="text-[#00d4ff] font-medium">Ожидание...</span></p>
+                </div>
+
+                <div class="glass-card p-5 rounded-[28px] mb-5 space-y-4">
+                    <h3 class="font-semibold text-xs uppercase tracking-wider text-white/80 flex items-center"><i class="fa-solid fa-gear text-[#00d4ff] mr-2"></i> Настройки</h3>
+                    <div>
+                        <label class="block text-[11px] text-gray-400 mb-1.5">Ваше имя:</label>
+                        <input type="text" id="edit-my-name" class="w-full glass-input p-3 rounded-xl text-xs mb-3">
+                        
+                        <label class="block text-[11px] text-gray-400 mb-1.5">Дата начала отношений:</label>
+                        <input type="date" id="date-start" class="w-full glass-input p-3 rounded-xl text-xs mb-4" style="color-scheme: dark;">
+                        
+                        <button onclick="saveProfile()" class="w-full py-3 btn-secondary rounded-xl btn-alive text-xs font-semibold hover:bg-white/10"><i class="fa-solid fa-save mr-1.5"></i> Сохранить настройки</button>
+                    </div>
+
+                    <div class="grid grid-cols-4 gap-2 text-center pt-4 border-t border-white/5">
+                        <div><div id="cnt-days" class="text-lg text-[#ff007f] font-semibold">0</div><div class="text-[8px] text-gray-500 uppercase">Дней</div></div>
+                        <div><div id="cnt-hours" class="text-lg text-white font-semibold">0</div><div class="text-[8px] text-gray-500 uppercase">Часов</div></div>
+                        <div><div id="cnt-mins" class="text-lg text-white font-semibold">0</div><div class="text-[8px] text-gray-500 uppercase">Минут</div></div>
+                        <div><div id="cnt-secs" class="text-lg text-gray-500 font-semibold">0</div><div class="text-[8px] text-gray-500 uppercase">Сек</div></div>
+                    </div>
+                </div>
+
+                <button onclick="logout()" class="w-full py-3.5 rounded-2xl btn-secondary btn-alive text-red-400 text-xs font-semibold hover:bg-red-500/10 mb-6"><i class="fa-solid fa-arrow-right-from-bracket mr-2"></i>Выйти из аккаунта</button>
+            </div>
+
+            <!-- Quiz Mode Select (Pair / Solo) -->
+            <div id="view-quiz-mode" class="view-section justify-center items-center text-center absolute inset-0 z-20 bg-[#0b0710]/98 backdrop-blur-md p-6">
+                <button onclick="closeQuizMode()" class="absolute top-5 left-5 text-gray-400 p-2 btn-alive hover:text-white"><i class="fa-solid fa-arrow-left text-lg"></i></button>
+                <h2 class="text-xl font-semibold mb-2 text-white" id="mode-block-title"></h2>
+                <p class="text-xs text-gray-400 mb-8 font-light">Выберите режим прохождения квиза</p>
+                
+                <div class="w-full max-w-xs space-y-3.5">
+                    <button onclick="startQuizInit('pair')" class="w-full p-4 rounded-2xl btn-primary btn-alive flex flex-col items-center gap-1.5">
+                        <i class="fa-solid fa-user-group text-xl mb-0.5"></i>
+                        <span class="font-semibold text-sm">С партнером</span>
+                        <span class="text-[10px] text-white/70 font-light">Синхронно в реальном времени</span>
+                    </button>
+                    <button onclick="startQuizInit('solo')" class="w-full p-4 rounded-2xl glass-card btn-alive flex flex-col items-center gap-1.5 border-[#00d4ff]/30 hover:bg-[#00d4ff]/10">
+                        <i class="fa-solid fa-user text-xl text-[#00d4ff] mb-0.5"></i>
+                        <span class="font-semibold text-white text-sm">Пройти соло</span>
+                        <span class="text-[10px] text-gray-400 font-light">Ответить сейчас (засчитается в пару)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Waiting Screen -->
+            <div id="view-quiz-waiting" class="view-section justify-center items-center text-center absolute inset-0 z-20 bg-[#0b0710] p-6">
+                <div class="w-16 h-16 rounded-full bg-[#ff007f]/10 border border-[#ff007f]/30 flex items-center justify-center text-[#ff007f] text-2xl mb-5 mx-auto animate-pulse">
+                    <i class="fa-solid fa-hourglass-half"></i>
+                </div>
+                <h2 class="text-lg font-semibold mb-2 text-white" id="waiting-title">Ожидание партнера...</h2>
+                <p class="text-xs text-gray-400 font-light max-w-xs mx-auto mb-8" id="waiting-desc">Оба участника должны подключиться к сессии.</p>
+                <button onclick="cancelQuiz()" class="text-xs text-gray-400 hover:text-white btn-secondary px-5 py-2.5 rounded-xl btn-alive mx-auto">Отменить</button>
+            </div>
+
+            <!-- Active Quiz -->
+            <div id="view-quiz-active" class="view-section absolute inset-0 z-20 bg-[#0b0710] p-5">
+                <div class="flex justify-between items-center mb-5 shrink-0">
+                    <span id="quiz-active-category" class="text-[11px] font-semibold text-[#00d4ff] bg-[#00d4ff]/10 px-3 py-1 rounded-lg border border-[#00d4ff]/20"></span>
+                    <span class="text-xs font-mono text-gray-400 bg-white/5 border border-white/10 px-3 py-1 rounded-lg"><span id="q-current" class="text-white font-semibold"></span> / <span id="q-total"></span></span>
+                </div>
+
+                <div class="w-full h-1 bg-white/10 rounded-full mb-6 overflow-hidden shrink-0">
+                    <div id="quiz-progress-bar" class="h-full bg-gradient-to-r from-[#ff007f] to-[#7000ff] w-0 transition-all duration-300"></div>
+                </div>
+
+                <div class="flex-1 flex flex-col justify-center mb-6 overflow-y-auto">
+                    <h2 id="question-text" class="text-xl font-semibold leading-snug mb-6 text-center text-white/95">Загрузка...</h2>
+                    <div id="answers-container" class="w-full flex flex-col gap-2.5 transition-opacity duration-300"></div>
+                </div>
+
+                <div id="partner-status-box" class="p-3.5 rounded-2xl bg-black/40 border border-white/5 flex items-center justify-between shrink-0">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-2 h-2 rounded-full bg-[#ff007f] animate-pulse"></div>
+                        <span class="text-xs text-gray-400" id="partner-quiz-status">Партнер думает <span class="typing-dots"><span></span><span></span><span></span></span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quiz Done Popup -->
+            <div id="view-quiz-done" class="view-section justify-center items-center absolute inset-0 z-30 bg-black/85 backdrop-blur-md p-6">
+                <div id="done-popup" class="glass-panel p-6 text-center scale-0 transition-transform duration-500 ease-out border-[#00d4ff]/30 shadow-[0_0_50px_rgba(0,212,255,0.2)] w-full max-w-sm rounded-[32px]">
+                    <i class="fa-solid fa-trophy text-4xl text-[#00d4ff] mb-3 pop-animation"></i>
+                    <h2 class="text-2xl font-semibold text-white mb-1">Потрясающе!</h2>
+                    <p class="text-xs text-gray-300 mb-6 font-light">Блок вопросов успешно пройден.</p>
+                    <button onclick="goToResults()" class="w-full py-3.5 rounded-2xl btn-primary btn-alive font-semibold text-sm">Смотреть результаты</button>
+                </div>
+            </div>
+
+            <!-- Results & Comparison -->
+            <div id="view-results" class="view-section absolute inset-0 z-20 bg-[#0b0710] p-5 overflow-y-auto">
+                <button onclick="closeResults()" class="text-gray-400 text-xs mb-5 flex items-center gap-2 btn-alive hover:text-white shrink-0 w-fit"><i class="fa-solid fa-arrow-left"></i> Вернуться в лобби</button>
+                
+                <div class="text-center mb-6 shrink-0">
+                    <h2 class="text-xl font-semibold text-white/95" id="res-title">Результаты</h2>
+                    <p class="text-xs text-gray-400 mt-0.5">Сравнение ответов пары</p>
+                </div>
+
+                <div id="ai-loading" class="glass-card p-6 rounded-[28px] flex flex-col items-center text-center mb-6 border-[#7000ff]/30 shrink-0">
+                    <i class="fa-solid fa-brain text-3xl text-[#7000ff] mb-3 animate-pulse"></i>
+                    <p class="text-xs text-white font-medium mb-1">ИИ анализирует ответы...</p>
+                    <p class="text-[10px] text-gray-500">Составляем психологический профиль</p>
+                </div>
+
+                <div id="ai-report" class="hidden p-5 rounded-[28px] border border-[#7000ff]/40 bg-gradient-to-b from-[#7000ff]/10 to-transparent mb-6 shrink-0 shadow-lg">
+                    <h3 class="font-semibold text-xs mb-3 text-[#00d4ff] flex items-center gap-1.5"><i class="fa-solid fa-sparkles"></i> Вердикт Психолога (AI)</h3>
+                    <div id="ai-content" class="text-xs text-gray-300 space-y-2.5 font-light leading-relaxed"></div>
+                </div>
+
+                <h3 class="font-semibold text-xs mb-3 text-white/80 shrink-0 pl-1">Детальное сравнение ответов</h3>
+                <div id="comparison-container" class="space-y-3 pb-4 w-full"></div>
+
+                <button onclick="restartQuizTogether()" class="w-full py-3.5 mt-4 rounded-2xl btn-secondary btn-alive text-xs font-semibold hover:bg-white/10 shrink-0"><i class="fa-solid fa-rotate-right mr-2"></i>Пройти снова вместе</button>
+            </div>
+
+        </div>
+
+        <!-- Custom Modal for Completed Quizzes -->
+        <div id="completed-modal" class="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-6">
+            <div class="glass-panel p-6 rounded-[28px] text-center w-full max-w-xs pop-animation border border-white/10">
+                <div class="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl mx-auto mb-3">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+                <h3 class="text-base font-semibold text-white mb-1">Квиз уже пройден</h3>
+                <p class="text-xs text-gray-400 mb-6 font-light">Вы с партнером уже ответили на эти вопросы. Хотите посмотреть результаты?</p>
+                <div class="space-y-2.5">
+                    <button onclick="modalOpenResults()" class="w-full py-3 rounded-2xl btn-primary btn-alive font-semibold text-xs">Посмотреть результаты</button>
+                    <button onclick="closeCompletedModal()" class="w-full py-2.5 rounded-2xl btn-secondary btn-alive text-xs text-gray-400">Закрыть</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <nav id="bottom-nav" class="flex justify-around items-center p-2.5 bg-black/70 backdrop-blur-xl border-t border-white/5 w-full shrink-0 z-10" style="display: none;">
+            <button onclick="showNavView('topics')" class="nav-item flex flex-col items-center gap-1 active text-white w-20 transition-colors" id="nav-btn-topics">
+                <i class="fa-solid fa-layer-group text-lg"></i><span class="text-[9px] uppercase tracking-wider font-semibold">Темы</span>
+            </button>
+            <button onclick="showNavView('history')" class="nav-item flex flex-col items-center gap-1 text-gray-500 w-20 transition-colors hover:text-gray-300" id="nav-btn-history">
+                <i class="fa-solid fa-clock-rotate-left text-lg"></i><span class="text-[9px] uppercase tracking-wider font-semibold">История</span>
+            </button>
+            <button onclick="showNavView('profile')" class="nav-item flex flex-col items-center gap-1 text-gray-500 w-20 transition-colors hover:text-gray-300" id="nav-btn-profile">
+                <i class="fa-solid fa-user text-lg"></i><span class="text-[9px] uppercase tracking-wider font-semibold">Профиль</span>
+            </button>
+        </nav>
+
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, onSnapshot, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const myExternalFirebaseConfig = {
+            apiKey: "AIzaSyDIvUdI4ufZEuEWJpkimgb3I2uMeGeh3L4",
+            authDomain: "quiz-7a32d.firebaseapp.com",
+            projectId: "quiz-7a32d",
+            storageBucket: "quiz-7a32d.firebasestorage.app",
+            messagingSenderId: "610375905718",
+            appId: "1:610375905718:web:54a62dbb210ac73eed5117"
+        };
+        const appId = "couples-quiz-app-v2";
+        const OPENAI_API_KEY = "sk-2uYFnDkB079l4WClduRLGzICb15zuZypFsxyWG8SjWxQd7hT";
+        const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+
+        // Генерация большой базы: 7 тем, в каждой 7 блоков, в каждом от 7 до 15 вопросов
+        function generateMassiveQuizData() {
+            const categories = [
+                { id: 'everyday', title: 'Быт и Привычки', icon: 'fa-house', color: 'text-blue-400', desc: 'Уборка, финансы, рутина' },
+                { id: 'relationships', title: 'Отношения', icon: 'fa-heart', color: 'text-pink-500', desc: 'Эмоции, доверие, границы' },
+                { id: 'sexy', title: 'Секси (18+)', icon: 'fa-fire', color: 'text-orange-500', desc: 'Интим, фантазии, страсть' },
+                { id: 'future', title: 'Будущее', icon: 'fa-rocket', color: 'text-purple-400', desc: 'Цели, карьера, планы' },
+                { id: 'family', title: 'Семья', icon: 'fa-baby', color: 'text-green-400', desc: 'Дети, родственники, дом' },
+                { id: 'travel', title: 'Отдых', icon: 'fa-plane', color: 'text-yellow-400', desc: 'Отпуск, выходные, поездки' },
+                { id: 'extreme', title: 'Экстрим', icon: 'fa-bolt', color: 'text-red-500', desc: 'Нестандартные ситуации' }
+            ];
+
+            const data = {};
+            categories.forEach(cat => {
+                data[cat.id] = { ...cat, blocks: {} };
+                for (let b = 1; b <= 7; b++) {
+                    const bId = `block_${b}`;
+                    const qCount = 8 + (b % 5); // от 8 до 12 вопросов в блоке
+                    const questions = [];
+                    for (let q = 1; q <= qCount; q++) {
+                        const types = ['slider', 'boolean', 'choice'];
+                        const type = types[q % 3];
+                        let qObj = { id: `${cat.id}_${bId}_q${q}`, type, text: `Вопрос #${q} в категории "${cat.title}" (Блок ${b}): Насколько это важно для вас?` };
+                        if (type === 'slider') { qObj.labels = ['Совсем нет', 'Максимально']; }
+                        else if (type === 'boolean') { qObj.text = `Вопрос #${q} в категории "${cat.title}" (Блок ${b}): Согласны ли вы с утверждением?`; }
+                        else {
+                            qObj.text = `Вопрос #${q} в категории "${cat.title}" (Блок ${b}): Выберите лучший вариант:`;
+                            qObj.options = ['Вариант А (Спокойный)', 'Вариант Б (Активный)', 'Вариант В (Компромисс)', 'Вариант Г (Свой вариант)'];
+                        }
+                        questions.push(qObj);
+                    }
+                    data[cat.id].blocks[bId] = {
+                        title: `${cat.title} — Часть ${b}`,
+                        desc: `Углубленный блок #${b} (${qCount} вопросов)`,
+                        questions
+                    };
+                }
+            });
+            return data;
+        }
+
+        const QUIZ_DATA = generateMassiveQuizData();
+
+        let app, db, auth;
+        let currentUser = null;
+        let currentPartner = null;
+        let activeSessionId = null;
+        let currentBlockDef = null;
+        let currentTopicId = null;
+        let currentBlockId = null;
+        
+        let currentQuestionIndex = 0;
+        let myAnswers = {};
+        let isQuizDone = false;
+        let isAnswering = false;
+        
+        let sessionUnsubscribe = null;
+        let userUnsubscribe = null;
+        let counterInterval = null;
+        let globalSessionsUnsubscribe = null;
+
+        window.switchView = (viewId, hideNav = true) => {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            const target = document.getElementById(viewId);
+            if (target) target.classList.add('active');
+            
+            const header = document.getElementById('main-header');
+            const nav = document.getElementById('bottom-nav');
+            
+            if (['view-loading', 'view-login', 'view-link'].includes(viewId) || viewId.startsWith('view-quiz') || viewId === 'view-results') {
+                header.style.display = 'none'; 
+                nav.style.display = 'none';
+            } else {
+                header.style.display = 'flex';
+                if (!hideNav) nav.style.display = 'flex';
+            }
+        };
+
+        window.showNavView = (tab) => {
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('active', 'text-white');
+                el.classList.add('text-gray-500');
+            });
+            const activeBtn = document.getElementById(`nav-btn-${tab}`);
+            if(activeBtn) {
+                activeBtn.classList.add('active', 'text-white');
+                activeBtn.classList.remove('text-gray-500');
+            }
+            
+            if(tab === 'topics') { switchView('view-topics', false); renderTopics(); checkNotifications(); }
+            if(tab === 'history') { switchView('view-history', false); renderHistory(); }
+            if(tab === 'profile') { switchView('view-profile', false); renderProfile(); }
+        };
+
+        let selectedAvatarUrl = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150';
+        window.setAvatarChoice = (url) => {
+            selectedAvatarUrl = url;
+            document.getElementById('login-avatar-preview').src = url;
+        };
+
+        try {
+            app = initializeApp(myExternalFirebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            
+            auth.onAuthStateChanged(async (user) => {
+                if (user) { 
+                    await loadUserProfile(user.uid); 
+                } else { 
+                    try {
+                        await signInAnonymously(auth);
+                    } catch(e) {
+                        document.getElementById('view-loading').innerHTML = '<p class="text-red-400 p-5">Ошибка подключения Auth.</p>';
+                    }
+                }
+            });
+        } catch (e) {
+            document.getElementById('view-loading').innerHTML = '<p class="text-red-400 p-5">Ошибка инициализации БД.</p>';
+        }
+
+        async function loadUserProfile(uid) {
+            if(userUnsubscribe) userUnsubscribe();
+            
+            userUnsubscribe = onSnapshot(doc(db, 'artifacts', appId, 'users', uid), async (docSnap) => {
+                if (docSnap.exists()) {
+                    currentUser = { uid, ...docSnap.data() };
+                    if(!currentUser.completedBlocks) currentUser.completedBlocks = [];
+                    if(!currentUser.avatar) currentUser.avatar = selectedAvatarUrl;
+                    
+                    document.getElementById('header-my-avatar').style.backgroundImage = `url('${currentUser.avatar}')`;
+
+                    if (currentUser.partnerId) {
+                        await loadPartnerProfile(currentUser.partnerId);
+                        if(!activeSessionId) showNavView('topics');
+                        listenForGlobalSessions();
+                        initCounter();
+                        document.getElementById('header-partner-status').style.display = 'flex';
+                        document.getElementById('hp-name').innerText = currentPartner.name;
+                    } else {
+                        document.getElementById('my-code').innerText = currentUser.linkCode;
+                        switchView('view-link');
+                    }
+                } else {
+                    switchView('view-login');
+                }
+            });
+        }
+
+        async function loadPartnerProfile(partnerUid) {
+            const pSnap = await getDoc(doc(db, 'artifacts', appId, 'users', partnerUid));
+            if (pSnap.exists()) currentPartner = { uid: partnerUid, ...pSnap.data() };
+        }
+
+        window.handleLogin = async () => {
+            const nameInput = document.getElementById('input-name').value.trim();
+            if (!nameInput) return;
+            
+            const btn = document.getElementById('btn-login'); 
+            btn.disabled = true; 
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Сохраняем...';
+            
+            try {
+                const linkCode = Math.floor(100000 + Math.random() * 900000).toString();
+                await setDoc(doc(db, 'artifacts', appId, 'users', auth.currentUser.uid), {
+                    name: nameInput, 
+                    linkCode: linkCode, 
+                    partnerId: null, 
+                    avatar: selectedAvatarUrl,
+                    dates: { start: null }, 
+                    completedBlocks: [], 
+                    createdAt: serverTimestamp()
+                });
+            } catch(e) {
+                alert("Ошибка сохранения профиля.");
+                btn.disabled = false;
+                btn.innerHTML = 'Продолжить';
+            }
+        };
+
+        window.copyCode = () => {
+            navigator.clipboard.writeText(currentUser.linkCode).then(() => {
+                const s = document.getElementById('copy-status');
+                s.innerText = 'Скопировано!'; s.classList.add('text-green-400');
+                setTimeout(() => { s.innerText = 'Нажмите, чтобы скопировать'; s.classList.remove('text-green-400'); }, 2000);
+            });
+        };
+
+        window.linkPartner = async () => {
+            const code = document.getElementById('input-partner-code').value.trim();
+            if (code.length !== 6) return;
+            
+            const btn = document.getElementById('btn-link'); btn.disabled = true;
+            const status = document.getElementById('linking-status'); status.style.display = 'block';
+            
+            const q = query(collection(db, 'artifacts', appId, 'users'), where('linkCode', '==', code));
+            const querySnapshot = await getDocs(q);
+            
+            if (!querySnapshot.empty) {
+                const pId = querySnapshot.docs[0].id;
+                if (pId === currentUser.uid) { status.innerText = 'Это ваш код!'; btn.disabled = false; return; }
+                status.innerText = 'Соединяем пары...';
+                await updateDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid), { partnerId: pId });
+                await updateDoc(doc(db, 'artifacts', appId, 'users', pId), { partnerId: currentUser.uid });
+            } else {
+                status.innerText = 'Код не найден'; status.classList.replace('text-[#00d4ff]', 'text-red-400');
+                setTimeout(() => { status.style.display = 'none'; status.classList.replace('text-red-400', 'text-[#00d4ff]'); btn.disabled = false; }, 2000);
+            }
+        };
+
+        window.logout = async () => {
+            if(confirm("Выйти из аккаунта?")) {
+                if (userUnsubscribe) userUnsubscribe();
+                if (sessionUnsubscribe) sessionUnsubscribe();
+                if (globalSessionsUnsubscribe) globalSessionsUnsubscribe();
+                await signOut(auth);
+                window.location.reload();
+            }
+        };
+
+        function listenForGlobalSessions() {
+            if (globalSessionsUnsubscribe) globalSessionsUnsubscribe();
+            const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'sessions'));
+            globalSessionsUnsubscribe = onSnapshot(q, (snapshot) => {
+                checkNotifications();
+            }, (err) => { console.debug(err); });
+        }
+
+        async function checkNotifications() {
+            if (!currentPartner) return;
+            const notifSection = document.getElementById('notifications-section');
+            const notifList = document.getElementById('notifications-list');
+            notifList.innerHTML = '';
+            
+            const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'sessions'));
+            const snaps = await getDocs(q);
+            
+            let notifications = [];
+            snaps.forEach(docSnap => {
+                const data = docSnap.data();
+                if (data.users && data.users[currentPartner.uid]?.status === 'finished') {
+                    if (!data.users[currentUser.uid] || data.users[currentUser.uid]?.status !== 'finished') {
+                        const parts = data.topic.split('_');
+                        const tId = parts[0]; const bId = parts[1];
+                        const blockTitle = QUIZ_DATA[tId]?.blocks[bId]?.title || 'Квиз';
+                        notifications.push({ id: docSnap.id, tId, bId, title: blockTitle });
+                    }
+                }
+            });
+
+            if (notifications.length > 0) {
+                notifSection.classList.remove('hidden');
+                notifications.forEach(n => {
+                    const item = document.createElement('div');
+                    item.className = "glass-card p-3 rounded-2xl flex items-center justify-between border border-[#ff007f]/30 btn-alive";
+                    item.onclick = () => handleBlockClick(n.tId, n.bId);
+                    item.innerHTML = `
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-2 h-2 rounded-full bg-[#ff007f] animate-pulse"></div>
+                            <span class="text-xs text-white font-medium">${n.title}</span>
+                        </div>
+                        <span class="text-[10px] text-[#ff007f] font-semibold bg-[#ff007f]/10 px-2 py-1 rounded-lg">Пройти <i class="fa-solid fa-arrow-right ml-1"></i></span>
+                    `;
+                    notifList.appendChild(item);
+                });
+            } else {
+                notifSection.classList.add('hidden');
+            }
+        }
+
+        function renderTopics() {
+            const container = document.getElementById('topics-container');
+            container.innerHTML = '';
+            
+            Object.values(QUIZ_DATA).forEach(t => {
+                let totalCompleted = 0;
+                let totalBlocks = Object.keys(t.blocks).length;
+                let partnerWaiting = false;
+
+                Object.keys(t.blocks).forEach(bId => {
+                    const bKey = `${t.id}_${bId}`;
+                    const me = currentUser.completedBlocks.includes(bKey);
+                    const them = currentPartner?.completedBlocks?.includes(bKey);
+                    if(me && them) totalCompleted++;
+                    if(!me && them) partnerWaiting = true;
+                });
+
+                const card = document.createElement('div');
+                card.className = "glass-card p-4 rounded-3xl cursor-pointer hover:bg-white/5 btn-alive flex flex-col justify-between aspect-square relative overflow-hidden";
+                card.onclick = () => openTopic(t.id);
+                
+                const progressPct = (totalCompleted / totalBlocks) * 100;
+                
+                let badgeHtml = '';
+                if (partnerWaiting) {
+                    badgeHtml = `<div class="absolute top-3 right-3 bg-[#ff007f] text-white text-[9px] px-2.5 py-0.5 rounded-full font-bold shadow-lg animate-pulse z-10"><i class="fa-solid fa-bell mr-1"></i> Ждет</div>`;
+                }
+                
+                card.innerHTML = `
+                    <div class="absolute top-0 left-0 w-full h-1 bg-white/5"><div class="h-full bg-[#ff007f] transition-all duration-500" style="width: ${progressPct}%"></div></div>
+                    ${badgeHtml}
+                    <div class="w-11 h-11 rounded-2xl bg-black/40 flex items-center justify-center text-lg ${t.color} mb-2 border border-white/5"><i class="fa-solid ${t.icon}"></i></div>
+                    <div>
+                        <h4 class="font-semibold text-xs text-white/95 leading-tight">${t.title}</h4>
+                        <p class="text-[9px] text-gray-400 uppercase mt-1 font-medium">${totalCompleted}/${totalBlocks} Блоков</p>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function openTopic(tId) {
+            currentTopicId = tId;
+            const t = QUIZ_DATA[tId];
+            switchView('view-blocks', false);
+            
+            document.getElementById('block-view-title').innerText = t.title;
+            document.getElementById('block-view-desc').innerText = t.desc;
+            document.getElementById('block-view-icon').innerHTML = `<i class="fa-solid ${t.icon} ${t.color}"></i>`;
+            
+            const container = document.getElementById('blocks-container');
+            container.innerHTML = '';
+            
+            Object.entries(t.blocks).forEach(([bId, b]) => {
+                const bKey = `${tId}_${bId}`;
+                const me = currentUser.completedBlocks.includes(bKey);
+                const them = currentPartner?.completedBlocks?.includes(bKey);
+                
+                let statusHtml = `<i class="fa-solid fa-chevron-right text-gray-600 text-xs"></i>`;
+                if (me && them) statusHtml = `<div class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs border border-emerald-500/30"><i class="fa-solid fa-check"></i></div>`;
+                else if (!me && them) statusHtml = `<span class="bg-[#ff007f]/20 border border-[#ff007f]/30 text-[#ff007f] text-[10px] px-2.5 py-1 rounded-md font-semibold animate-pulse">Партнер ждет!</span>`;
+                
+                const card = document.createElement('div');
+                card.className = "glass-card p-4 rounded-2xl cursor-pointer hover:bg-white/5 btn-alive flex items-center justify-between border-white/5";
+                card.onclick = () => handleBlockClick(tId, bId);
+                
+                card.innerHTML = `
+                    <div>
+                        <h4 class="font-semibold text-xs text-gray-200">${b.title}</h4>
+                        <p class="text-[10px] text-gray-400 mt-0.5">${b.desc}</p>
+                    </div>
+                    ${statusHtml}
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        let pendingCompletedBlock = null;
+
+        async function handleBlockClick(tId, bId) {
+            currentTopicId = tId; currentBlockId = bId;
+            currentBlockDef = QUIZ_DATA[tId].blocks[bId];
+            const blockKey = `${tId}_${bId}`;
+            
+            const me = currentUser.completedBlocks.includes(blockKey);
+            const them = currentPartner?.completedBlocks?.includes(blockKey);
+            
+            const pairId = [currentUser.uid, currentPartner ? currentPartner.uid : 'solo'].sort().join('_');
+            activeSessionId = `session_${pairId}_${blockKey}`;
+
+            if (me && them) {
+                // Если квиз уже пройден обоими, показываем кастомное модальное окно с результатами
+                pendingCompletedBlock = { tId, bId, blockKey };
+                document.getElementById('completed-modal').style.display = 'flex';
+            } else {
+                switchView('view-quiz-mode');
+                document.getElementById('mode-block-title').innerText = currentBlockDef.title;
+            }
+        }
+
+        window.modalOpenResults = async () => {
+            document.getElementById('completed-modal').style.display = 'none';
+            const sessionRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', activeSessionId);
+            const snap = await getDoc(sessionRef);
+            if(snap.exists()) {
+                showResultsUI(snap.data(), currentBlockDef);
+            } else {
+                // Если сессии в базе нет, сгенерируем заглушку или перейдем в режим соло/совместный
+                showResultsUI({ users: { [currentUser.uid]: { answers: {} } } }, currentBlockDef);
+            }
+        };
+
+        window.closeCompletedModal = () => {
+            document.getElementById('completed-modal').style.display = 'none';
+        };
+
+        window.closeQuizMode = () => { showNavView('topics'); };
+
+        window.startQuizInit = async (mode, wipe = false) => {
+            const fullTopicId = `${currentTopicId}_${currentBlockId}`;
+            const pairId = [currentUser.uid, (currentPartner?currentPartner.uid:'solo')].sort().join('_');
+            activeSessionId = `session_${pairId}_${fullTopicId}`;
+            isQuizDone = false;
+            
+            switchView('view-quiz-waiting');
+            document.getElementById('waiting-title').innerText = (mode === 'solo') ? "Подготовка..." : "Синхронизация с партнером";
+            
+            const sessionRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', activeSessionId);
+            const sessionSnap = await getDoc(sessionRef);
+            
+            let sessionData = sessionSnap.exists() && !wipe ? sessionSnap.data() : { topic: fullTopicId, createdAt: serverTimestamp(), users: {} };
+            const partnerFinished = currentPartner && sessionData.users?.[currentPartner.uid]?.status === 'finished';
+
+            sessionData.status = (mode === 'solo' || partnerFinished) ? 'active' : 'waiting';
+            sessionData.mode = mode;
+            if(!sessionData.users) sessionData.users = {};
+            sessionData.users[currentUser.uid] = { progress: 0, answers: {}, status: 'joined' };
+            
+            if (mode === 'pair' && currentPartner && !partnerFinished) {
+                sessionData.users[currentPartner.uid] = { progress: 0, answers: {}, status: 'invited' };
+            }
+
+            await setDoc(sessionRef, sessionData);
+            listenToActiveSession();
+        };
+
+        window.cancelQuiz = async () => {
+            if (activeSessionId) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'sessions', activeSessionId), { status: 'cancelled' });
+            activeSessionId = null;
+            showNavView('topics');
+        };
+
+        function listenToActiveSession() {
+            if (sessionUnsubscribe) sessionUnsubscribe();
+            
+            sessionUnsubscribe = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'sessions', activeSessionId), (docSnap) => {
+                if (!docSnap.exists()) return;
+                const data = docSnap.data();
+                
+                if (data.status === 'cancelled') { alert('Сессия отменена.'); activeSessionId = null; showNavView('topics'); return; }
+
+                if (data.status === 'active') {
+                    if (!document.getElementById('view-quiz-active').classList.contains('active')) {
+                        startQuizUI();
+                    }
+                    if (data.mode === 'pair' && currentPartner && data.users[currentPartner.uid]) {
+                        const pData = data.users[currentPartner.uid];
+                        document.getElementById('partner-status-box').style.display = 'flex';
+                        if (pData.status === 'finished') {
+                            document.getElementById('partner-quiz-status').innerText = "Партнер завершил блок!";
+                        } else {
+                            document.getElementById('partner-quiz-status').innerHTML = `Партнер думает <span class="typing-dots"><span></span><span></span><span></span></span>`;
+                        }
+                    } else {
+                        document.getElementById('partner-status-box').style.display = 'none';
+                    }
+                }
+                
+                if (data.status === 'finished' && !isQuizDone) {
+                    showCompletionPopup();
+                }
+            });
+        }
+
+        function startQuizUI() {
+            isQuizDone = false;
+            currentQuestionIndex = 0; 
+            myAnswers = {}; 
+            isAnswering = false;
+            switchView('view-quiz-active');
+            document.getElementById('quiz-active-category').innerText = currentBlockDef.title;
+            document.getElementById('q-total').innerText = currentBlockDef.questions.length;
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            if (currentQuestionIndex >= currentBlockDef.questions.length) return;
+
+            const q = currentBlockDef.questions[currentQuestionIndex];
+            document.getElementById('q-current').innerText = currentQuestionIndex + 1;
+            document.getElementById('question-text').innerText = q.text;
+            
+            const pct = (currentQuestionIndex / currentBlockDef.questions.length) * 100;
+            document.getElementById('quiz-progress-bar').style.width = `${pct}%`;
+
+            const container = document.getElementById('answers-container');
+            container.style.opacity = '0';
+            isAnswering = false;
+            
+            setTimeout(() => {
+                container.innerHTML = '';
+                
+                if (q.type === 'slider') {
+                    let dots = '';
+                    for(let i=1; i<=7; i++) {
+                        dots += `<button onclick="saveAnswer('${q.id}', '${i}')" class="h-12 flex-1 rounded-xl glass-card border border-white/10 hover:border-[#ff007f] hover:bg-[#ff007f]/20 transition-all mx-0.5 text-sm font-semibold text-white/80 hover:text-white btn-alive">${i}</button>`;
+                    }
+                    container.innerHTML = `
+                        <div class="glass-card p-4 rounded-2xl text-center bg-black/20">
+                            <div class="flex justify-between text-[10px] text-[#00d4ff] mb-4 font-semibold uppercase tracking-wider">
+                                <span class="w-[45%] text-left leading-tight">${q.labels[0]}</span>
+                                <span class="w-[45%] text-right leading-tight">${q.labels[1]}</span>
+                            </div>
+                            <div class="flex justify-between items-center w-full mb-1">${dots}</div>
+                        </div>
+                    `;
+                } 
+                else if (q.type === 'boolean') {
+                    container.innerHTML = `
+                        <div class="grid grid-cols-2 gap-3">
+                            <button onclick="saveAnswer('${q.id}', 'Да')" class="py-6 rounded-2xl glass-card border-white/10 hover:border-[#ff007f] hover:bg-[#ff007f]/15 btn-alive text-lg font-semibold text-white bg-black/20">Да</button>
+                            <button onclick="saveAnswer('${q.id}', 'Нет')" class="py-6 rounded-2xl glass-card border-white/10 hover:border-[#7000ff] hover:bg-[#7000ff]/15 btn-alive text-lg font-semibold text-white bg-black/20">Нет</button>
+                        </div>
+                    `;
+                } 
+                else if (q.type === 'choice') {
+                    q.options.forEach(opt => {
+                        const btn = document.createElement('button');
+                        btn.className = "w-full py-4 px-5 rounded-2xl glass-card text-left font-light hover:bg-white/10 btn-alive flex items-center justify-between group text-xs text-gray-200 border border-white/5 bg-black/20";
+                        btn.innerHTML = `<span>${opt}</span> <div class="w-3.5 h-3.5 rounded-full border border-gray-500 group-hover:border-[#ff007f] group-hover:bg-[#ff007f] transition-all"></div>`;
+                        btn.onclick = () => saveAnswer(q.id, opt);
+                        container.appendChild(btn);
+                    });
+                }
+                container.style.opacity = '1';
+            }, 200);
+        }
+
+        window.saveAnswer = async (qId, value) => {
+            if (isAnswering) return; 
+            isAnswering = true;
+
+            const qText = currentBlockDef.questions.find(x => x.id === qId).text;
+            myAnswers[qId] = { text: qText, answer: value };
+            
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'sessions', activeSessionId), {
+                [`users.${currentUser.uid}.progress`]: currentQuestionIndex + 1
+            });
+            
+            const container = document.getElementById('answers-container');
+            container.style.opacity = '0.3';
+            
+            setTimeout(async () => {
+                currentQuestionIndex++;
+                if (currentQuestionIndex >= currentBlockDef.questions.length) {
+                    await finishMyPart();
+                } else {
+                    renderQuestion();
+                }
+            }, 200);
+        };
+
+        async function finishMyPart() {
+            document.getElementById('quiz-progress-bar').style.width = `100%`;
+            const sessionRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', activeSessionId);
+            
+            await updateDoc(sessionRef, {
+                [`users.${currentUser.uid}.progress`]: currentBlockDef.questions.length,
+                [`users.${currentUser.uid}.status`]: 'finished',
+                [`users.${currentUser.uid}.answers`]: myAnswers
+            });
+            
+            const blockKey = `${currentTopicId}_${currentBlockId}`;
+            if (!currentUser.completedBlocks.includes(blockKey)) {
+                const newCompleted = [...currentUser.completedBlocks, blockKey];
+                await updateDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid), {
+                    completedBlocks: newCompleted
+                });
+            }
+
+            const snap = await getDoc(sessionRef);
+            const data = snap.data();
+            
+            let allFinished = true;
+            if(currentPartner && data.users[currentPartner.uid]) {
+                const pData = data.users[currentPartner.uid];
+                if (pData.status !== 'finished') allFinished = false;
+            }
+
+            if (allFinished || !currentPartner) {
+                await updateDoc(sessionRef, { status: 'finished' });
+            } else {
+                switchView('view-quiz-waiting');
+                document.getElementById('waiting-title').innerText = "Блок пройден!";
+                document.getElementById('waiting-desc').innerText = "Ожидаем завершения от партнера для синхронизации результатов...";
+            }
+        }
+
+        function showCompletionPopup() {
+            if(isQuizDone) return;
+            isQuizDone = true;
+            
+            switchView('view-quiz-done');
+            const popup = document.getElementById('done-popup');
+            setTimeout(() => { 
+                popup.style.transform = 'scale(1)'; 
+                shootConfetti(); 
+            }, 50);
+        }
+
+        function shootConfetti() {
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            let particles = [];
+            for(let i=0; i<120; i++) {
+                particles.push({
+                    x: canvas.width/2, y: canvas.height/2 + 50,
+                    vx: (Math.random()-0.5)*25, vy: (Math.random()-0.5)*25 - 8,
+                    size: Math.random()*7+3, color: `hsl(${Math.random()*360}, 100%, 60%)`
+                });
+            }
+            function draw() {
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                let active = false;
+                particles.forEach(p => {
+                    p.x += p.vx; p.y += p.vy; p.vy += 0.5;
+                    ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+                    if(p.y < canvas.height) active = true;
+                });
+                if(active) requestAnimationFrame(draw);
+                else ctx.clearRect(0,0,canvas.width,canvas.height);
+            }
+            draw();
+        }
+
+        window.goToResults = () => {
+            const sessionRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', activeSessionId);
+            getDoc(sessionRef).then(snap => showResultsUI(snap.data(), currentBlockDef));
+        };
+
+        window.closeResults = () => {
+            if(sessionUnsubscribe) sessionUnsubscribe();
+            activeSessionId = null;
+            showNavView('topics');
+        };
+
+        window.restartQuizTogether = async () => {
+            if(confirm("Хотите сбросить прогресс блока и пройти его заново вместе?")) {
+                await startQuizInit('pair', true);
+            }
+        };
+
+        async function showResultsUI(sessionData, blockDef) {
+            switchView('view-results');
+            document.getElementById('res-title').innerText = blockDef.title;
+            
+            const myData = sessionData.users[currentUser.uid]?.answers || {};
+            let pData = {};
+            let pName = "Партнер";
+            let isPartnerFinished = false;
+
+            if(currentPartner) {
+                pName = currentPartner.name;
+                if (sessionData.users[currentPartner.uid]?.status === 'finished') {
+                    pData = sessionData.users[currentPartner.uid]?.answers || {};
+                    isPartnerFinished = true;
+                }
+            }
+            
+            const compContainer = document.getElementById('comparison-container');
+            compContainer.innerHTML = '';
+            
+            blockDef.questions.forEach((q, idx) => {
+                const myAns = myData[q.id]?.answer || '-';
+                const pAns = isPartnerFinished ? (pData[q.id]?.answer || '-') : 'Еще не ответил';
+                const isMatch = isPartnerFinished && (String(myAns) === String(pAns));
+                const borderClass = isMatch ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-white/5';
+                
+                const card = document.createElement('div');
+                card.className = `p-4 rounded-2xl border ${borderClass} bg-black/30`;
+                
+                let partnerHtml = `
+                    <div class="${isMatch?'bg-emerald-500/10':'bg-white/5'} p-3 rounded-xl text-center flex flex-col justify-center">
+                        <span class="block text-[9px] text-gray-400 mb-1 uppercase font-semibold">${pName}</span>
+                        <span class="font-semibold ${isPartnerFinished ? 'text-white' : 'text-gray-500'} text-xs">${pAns}</span>
+                    </div>
+                `;
+
+                card.innerHTML = `
+                    <p class="text-xs font-semibold mb-3 text-gray-200 leading-snug">${idx+1}. ${q.text}</p>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div class="${isMatch?'bg-emerald-500/10':'bg-white/5'} p-3 rounded-xl text-center flex flex-col justify-center">
+                            <span class="block text-[9px] text-gray-400 mb-1 uppercase font-semibold">${currentUser.name} (Вы)</span>
+                            <span class="font-semibold text-white text-xs">${myAns}</span>
+                        </div>
+                        ${partnerHtml}
+                    </div>
+                `;
+                compContainer.appendChild(card);
+            });
+            
+            if (!sessionData.aiAnalysis && isPartnerFinished) {
+                analyzeWithAI(blockDef.title, myData, pData, pName, sessionData.id || activeSessionId);
+            } else if (sessionData.aiAnalysis) {
+                renderAIReport(sessionData.aiAnalysis);
+            } else {
+                document.getElementById('ai-loading').style.display = 'none';
+                document.getElementById('ai-report').style.display = 'block';
+                document.getElementById('ai-content').innerHTML = '<p class="text-gray-400 text-center text-xs">ИИ-анализ будет доступен после того, как партнер ответит на вопросы.</p>';
+            }
+        }
+
+        async function analyzeWithAI(topic, myData, pData, pName, sId) {
+            let answersText = "";
+            Object.keys(myData).forEach(k => {
+                answersText += `Вопрос: ${myData[k].text}\n${currentUser.name}: ${myData[k].answer}\n`;
+                if (pData && pData[k]) answersText += `${pName}: ${pData[k].answer}\n`;
+                answersText += "\n";
+            });
+
+            let prompt = `Ты ИИ-семейный психолог. Проанализируй ответы на тему "${topic}". Выдели где они сходятся, где могут быть различия и дай красивый совет. Пиши емко, в формате HTML (<p>, <b>, без \`\`\`).\nОтветы:\n${answersText}`;
+
+            try {
+                const response = await fetch(OPENAI_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_API_KEY}` },
+                    body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{role: 'user', content: prompt}], temperature: 0.7 })
+                });
+
+                const json = await response.json();
+                if (json.choices && json.choices.length > 0) {
+                    const aiHtml = json.choices[0].message.content;
+                    if(sId) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sId), { aiAnalysis: aiHtml });
+                    renderAIReport(aiHtml);
+                }
+            } catch (e) {
+                document.getElementById('ai-loading').style.display = 'none';
+            }
+        }
+
+        function renderAIReport(htmlString) {
+            document.getElementById('ai-loading').style.display = 'none';
+            document.getElementById('ai-report').style.display = 'block';
+            document.getElementById('ai-content').innerHTML = htmlString.replace(/```html/g, '').replace(/```/g, '');
+        }
+
+        function renderProfile() {
+            document.getElementById('profile-name').innerText = currentUser.name;
+            document.getElementById('edit-my-name').value = currentUser.name;
+            document.getElementById('profile-my-avatar').src = currentUser.avatar || selectedAvatarUrl;
+            if(currentPartner) {
+                document.getElementById('profile-partner-name').innerText = currentPartner.name;
+                document.getElementById('profile-partner-avatar').src = currentPartner.avatar || 'https://placehold.co/150x150/2c1b3d/00d4ff?text=?';
+            }
+            if(currentUser.dates && currentUser.dates.start) document.getElementById('date-start').value = currentUser.dates.start;
+        }
+
+        window.saveProfile = async () => {
+            const sd = document.getElementById('date-start').value;
+            const newName = document.getElementById('edit-my-name').value.trim();
+            const updates = {};
+            if(sd) updates['dates.start'] = sd;
+            if(newName) updates['name'] = newName;
+            
+            if(Object.keys(updates).length > 0) {
+                await updateDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid), updates);
+                alert("Профиль успешно сохранен!");
+            }
+        };
+
+        function initCounter() {
+            if(counterInterval) clearInterval(counterInterval);
+            counterInterval = setInterval(() => {
+                if(!currentUser?.dates?.start) return;
+                const diff = new Date().getTime() - new Date(currentUser.dates.start).getTime();
+                if(diff < 0) return;
+                document.getElementById('cnt-days').innerText = Math.floor(diff / (1000*60*60*24));
+                document.getElementById('cnt-hours').innerText = Math.floor((diff % (1000*60*60*24))/(1000*60*60));
+                document.getElementById('cnt-mins').innerText = Math.floor((diff % (1000*60*60))/(1000*60));
+                document.getElementById('cnt-secs').innerText = Math.floor((diff % (1000*60))/1000);
+            }, 1000);
+        }
+
+        async function renderHistory() {
+            const container = document.getElementById('history-container');
+            container.innerHTML = '<div class="text-center text-gray-400 mt-8 text-xs"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Загрузка истории...</div>';
+            
+            const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'sessions'), 
+                where(`users.${currentUser.uid}.status`, '==', 'finished'));
+            const snaps = await getDocs(q);
+            
+            container.innerHTML = '';
+            if(snaps.empty) {
+                container.innerHTML = '<p class="text-xs text-gray-500 text-center mt-10">История пока пуста. Пройдите первый квиз!</p>'; 
+                return;
+            }
+
+            const docsList = [];
+            snaps.forEach(docSnap => docsList.push({ id: docSnap.id, ...docSnap.data() }));
+            
+            docsList.sort((a, b) => {
+                const tA = a.createdAt?.seconds || 0;
+                const tB = b.createdAt?.seconds || 0;
+                return tB - tA; // От новых к старым сверху вниз
+            });
+
+            docsList.forEach(data => {
+                const parts = data.topic.split('_');
+                const tId = parts[0]; const bId = parts[1];
+                const tName = QUIZ_DATA[tId]?.title || 'Квиз';
+                const bName = QUIZ_DATA[tId]?.blocks[bId]?.title || 'Блок';
+
+                const card = document.createElement('div');
+                card.className = "glass-card p-4 rounded-2xl cursor-pointer hover:bg-white/5 btn-alive border border-white/5";
+                card.onclick = () => { activeSessionId = data.id; showResultsUI(data, QUIZ_DATA[tId].blocks[bId]); };
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-1.5">
+                        <span class="text-[9px] text-[#00d4ff] bg-[#00d4ff]/10 border border-[#00d4ff]/20 px-2 py-0.5 rounded font-semibold uppercase">${tName}</span>
+                        <span class="text-[9px] text-gray-400 font-mono">${data.mode === 'solo' ? 'Соло' : 'С партнером'}</span>
+                    </div>
+                    <h4 class="font-semibold text-xs text-white/95">${bName}</h4>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        window.openDailyQuiz = () => {
+            currentTopicId = 'everyday';
+            currentBlockId = 'block_1';
+            currentBlockDef = QUIZ_DATA['everyday'].blocks['block_1'];
+            currentBlockDef.title = "📅 Вопрос дня для пары";
+            startQuizInit('pair', false);
+        };
+    </script>
+</body>
+</html>
