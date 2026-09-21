@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SoulSync | Квиз для пар</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(-45deg, #0f0c29, #302b63, #24243e, #1a1a2e);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Glassmorphism Classes */
+        .glass-panel {
+            background: rgba(25, 25, 35, 0.45);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            border-left: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            border-radius: 1.5rem;
+        }
+
+        .glass-input {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: all 0.3s ease;
+        }
+        
+        .glass-input:focus {
+            outline: none;
+            border-color: rgba(255, 105, 180, 0.5);
+            background: rgba(0, 0, 0, 0.4);
+            box-shadow: 0 0 15px rgba(255, 105, 180, 0.2);
+        }
+
+        .glass-btn {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+        .glass-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.3);
+        }
+        .glass-btn.active-btn {
+            background: linear-gradient(135deg, #ff416c, #ff4b2b);
+            border: none;
+        }
+
+        /* Custom Range Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #ff4b2b;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 0 10px rgba(255, 75, 43, 0.5);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Animations */
+        .fade-in { animation: fadeIn 0.5s ease forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .pulse-text { animation: pulseText 2s infinite; }
+        @keyframes pulseText {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        /* Loading Spinner */
+        .loader {
+            border: 3px solid rgba(255,255,255,0.1);
+            border-radius: 50%;
+            border-top: 3px solid #ff416c;
+            width: 40px;
+            height: 40px;
+            -webkit-animation: spin 1s linear infinite; /* Safari */
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Hide scrollbar for clean look */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+    </style>
+</head>
+<body class="antialiased flex flex-col items-center justify-center p-4">
+
+    <div id="app-container" class="w-full max-w-2xl min-h-[90vh] glass-panel p-6 flex flex-col relative overflow-hidden transition-all duration-500">
+        
+        <!-- HEADER -->
+        <header class="flex justify-between items-center mb-8 pb-4 border-b border-white/10 hidden" id="main-header">
+            <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-400 to-orange-400 tracking-wider">
+                <i class="fa-solid fa-infinity mr-2"></i>SoulSync
+            </h1>
+            <div class="flex items-center gap-3">
+                <div class="text-sm text-gray-300" id="user-display-name"></div>
+                <button onclick="logout()" class="text-gray-400 hover:text-white transition"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
+            </div>
+        </header>
+
+        <!-- VIEW 1: AUTH / LOGIN -->
+        <div id="view-login" class="flex-1 flex flex-col justify-center items-center text-center fade-in">
+            <div class="w-24 h-24 mb-6 rounded-full glass-panel flex items-center justify-center text-4xl shadow-[0_0_30px_rgba(255,65,108,0.3)]">
+                💖
+            </div>
+            <h2 class="text-3xl font-bold mb-2">Добро пожаловать</h2>
+            <p class="text-gray-300 mb-8 text-sm">Узнайте друг друга на новом уровне</p>
+            
+            <div class="w-full max-w-xs space-y-4">
+                <input type="text" id="input-name" placeholder="Ваше имя (например, Артём)" class="w-full px-4 py-3 rounded-xl glass-input text-center placeholder-gray-400">
+                <button onclick="handleLogin()" class="w-full py-3 rounded-xl glass-btn active-btn font-semibold tracking-wide">
+                    Войти
+                </button>
+            </div>
+        </div>
+
+        <!-- VIEW 2: LINK PARTNER -->
+        <div id="view-link" class="flex-1 flex flex-col items-center text-center fade-in hidden">
+            <h2 class="text-2xl font-bold mb-6">Связь с партнером</h2>
+            
+            <div class="glass-panel w-full p-6 mb-6 rounded-2xl bg-white/5">
+                <p class="text-sm text-gray-300 mb-2">Ваш код для приглашения:</p>
+                <div class="text-4xl font-mono tracking-widest font-bold text-pink-400 mb-4 select-all cursor-pointer" id="my-code" onclick="copyCode()">
+                    ------
+                </div>
+                <p class="text-xs text-gray-400" id="copy-status">Нажмите на код, чтобы скопировать</p>
+            </div>
+
+            <div class="w-full flex items-center gap-4 mb-6">
+                <div class="h-px bg-white/20 flex-1"></div>
+                <span class="text-gray-400 text-sm">ИЛИ</span>
+                <div class="h-px bg-white/20 flex-1"></div>
+            </div>
+
+            <div class="w-full max-w-xs space-y-4">
+                <p class="text-sm text-gray-300">Введите код партнера:</p>
+                <input type="text" id="input-partner-code" maxlength="6" placeholder="000000" class="w-full px-4 py-3 rounded-xl glass-input text-center font-mono text-2xl tracking-widest uppercase">
+                <button onclick="linkPartner()" class="w-full py-3 rounded-xl glass-btn active-btn font-semibold">
+                    Соединить
+                </button>
+            </div>
+            
+            <div id="linking-status" class="mt-8 text-sm text-orange-300 pulse-text hidden">
+                Ожидание подключения партнера...
+            </div>
+        </div>
+
+        <!-- VIEW 3: DASHBOARD (Lobby & Counters) -->
+        <div id="view-dashboard" class="flex-1 flex flex-col fade-in hidden h-full overflow-y-auto pr-2 pb-4">
+            
+            <!-- Relationship Counter Widget -->
+            <div class="glass-panel p-5 mb-8 rounded-2xl bg-gradient-to-br from-white/5 to-pink-500/10 border-pink-500/20">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-semibold text-lg"><i class="fa-regular fa-clock text-pink-400 mr-2"></i>Счетчик отношений</h3>
+                    <button onclick="toggleDateSetup()" class="text-xs bg-white/10 px-2 py-1 rounded hover:bg-white/20 transition"><i class="fa-solid fa-gear"></i></button>
+                </div>
+                
+                <!-- Date Setup (Hidden by default) -->
+                <div id="date-setup-panel" class="hidden mb-4 p-3 bg-black/20 rounded-xl text-sm">
+                    <label class="block mb-1 text-gray-300">Начало отношений:</label>
+                    <input type="date" id="date-start" class="w-full mb-3 glass-input p-2 rounded-lg text-white color-scheme-dark" style="color-scheme: dark;">
+                    <button onclick="saveDates()" class="w-full py-2 bg-pink-500/50 hover:bg-pink-500/70 rounded-lg transition">Сохранить</button>
+                </div>
+
+                <!-- Active Counter -->
+                <div id="active-counter" class="grid grid-cols-4 gap-2 text-center">
+                    <div class="bg-black/30 rounded-xl p-2"><div id="cnt-days" class="text-xl font-bold text-pink-300">0</div><div class="text-[10px] text-gray-400 uppercase">Дней</div></div>
+                    <div class="bg-black/30 rounded-xl p-2"><div id="cnt-hours" class="text-xl font-bold">0</div><div class="text-[10px] text-gray-400 uppercase">Часов</div></div>
+                    <div class="bg-black/30 rounded-xl p-2"><div id="cnt-mins" class="text-xl font-bold">0</div><div class="text-[10px] text-gray-400 uppercase">Минут</div></div>
+                    <div class="bg-black/30 rounded-xl p-2"><div id="cnt-secs" class="text-xl font-bold text-gray-400">0</div><div class="text-[10px] text-gray-400 uppercase">Сек</div></div>
+                </div>
+            </div>
+
+            <!-- Partner Status Alert -->
+            <div id="partner-invite-alert" class="hidden glass-panel p-4 mb-6 rounded-xl bg-orange-500/20 border-orange-500/40 flex justify-between items-center animate-pulse">
+                <div>
+                    <p class="text-sm font-semibold text-orange-200">Приглашение!</p>
+                    <p class="text-xs text-gray-300">Партнер хочет пройти тему: <span id="invite-topic-name" class="font-bold">...</span></p>
+                </div>
+                <button onclick="acceptInvite()" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg hover:bg-orange-400">Начать</button>
+            </div>
+
+            <!-- Quizzes List -->
+            <h3 class="font-semibold text-lg mb-4">Доступные темы</h3>
+            <div id="quizzes-container" class="grid grid-cols-1 gap-4 mb-8">
+                <!-- Dynamically populated -->
+            </div>
+
+            <!-- Completed Quizzes -->
+            <h3 class="font-semibold text-lg mb-4 text-gray-400">Пройденные темы</h3>
+            <div id="completed-quizzes-container" class="grid grid-cols-1 gap-3 opacity-70">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+
+        <!-- VIEW 4: QUIZ WAITING -->
+        <div id="view-quiz-waiting" class="flex-1 flex flex-col justify-center items-center text-center fade-in hidden">
+            <div class="loader mb-6"></div>
+            <h2 class="text-2xl font-bold mb-2">Ожидаем партнера</h2>
+            <p class="text-gray-300 text-sm">Уведомление отправлено. Тема начнется, как только партнер подтвердит участие.</p>
+            <button onclick="cancelQuiz()" class="mt-8 text-sm text-gray-400 underline">Отмена</button>
+        </div>
+
+        <!-- VIEW 5: ACTIVE QUIZ -->
+        <div id="view-quiz-active" class="flex-1 flex flex-col fade-in hidden h-full">
+            <!-- Top bar -->
+            <div class="flex justify-between items-center mb-6">
+                <span id="quiz-active-category" class="text-xs font-bold uppercase tracking-wider text-pink-400 bg-pink-400/10 px-3 py-1 rounded-full">Категория</span>
+                <span class="text-sm font-mono bg-black/30 px-3 py-1 rounded-lg"><span id="q-current">1</span> / <span id="q-total">10</span></span>
+            </div>
+
+            <!-- Question Area -->
+            <div class="flex-1 flex flex-col justify-center mb-8">
+                <h2 id="question-text" class="text-2xl sm:text-3xl font-medium leading-tight mb-8 text-center drop-shadow-md">
+                    Вопрос загружается...
+                </h2>
+                
+                <!-- Answers Container (Dynamic) -->
+                <div id="answers-container" class="w-full flex flex-col gap-3">
+                    <!-- Buttons/Sliders injected here -->
+                </div>
+            </div>
+
+            <!-- Partner Status -->
+            <div class="glass-panel p-3 rounded-xl bg-black/20 flex items-center justify-between mt-auto">
+                <div class="flex items-center gap-3">
+                    <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                    <span class="text-xs text-gray-300" id="partner-quiz-status">Партнер отвечает на 1 вопрос...</span>
+                </div>
+                <div class="text-xs font-mono text-gray-500" id="partner-progress-text">0/10</div>
+            </div>
+        </div>
+
+        <!-- VIEW 6: RESULTS & AI ANALYSIS -->
+        <div id="view-results" class="flex-1 flex flex-col fade-in hidden h-full overflow-y-auto pr-2 pb-4">
+            <div class="text-center mb-6">
+                <div class="inline-block p-3 rounded-full bg-gradient-to-r from-pink-500 to-orange-400 mb-3 shadow-[0_0_20px_rgba(255,105,180,0.4)]">
+                    <i class="fa-solid fa-check-double text-2xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold">Тема завершена</h2>
+                <p class="text-sm text-gray-300">Время взглянуть правде в глаза</p>
+            </div>
+
+            <!-- AI Loading State -->
+            <div id="ai-loading" class="glass-panel p-6 rounded-2xl flex flex-col items-center text-center border-blue-500/30 bg-blue-900/20 mb-8">
+                <i class="fa-solid fa-brain text-4xl text-blue-400 mb-4 pulse-text"></i>
+                <p class="text-sm font-semibold mb-1 text-blue-200">ИИ Психолог анализирует ответы...</p>
+                <p class="text-xs text-gray-400">Ищем скрытые паттерны и точки соприкосновения</p>
+            </div>
+
+            <!-- AI Report -->
+            <div id="ai-report" class="hidden glass-panel p-6 rounded-2xl border-purple-500/30 bg-gradient-to-b from-purple-900/30 to-black/30 mb-8 shadow-lg shadow-purple-900/20">
+                <h3 class="font-bold text-lg mb-4 text-purple-300 border-b border-purple-500/30 pb-2"><i class="fa-solid fa-user-doctor mr-2"></i>Вердикт ИИ-Психолога</h3>
+                <div id="ai-content" class="text-sm text-gray-200 space-y-3 leading-relaxed">
+                    <!-- AI Text goes here -->
+                </div>
+            </div>
+
+            <!-- Answers Comparison -->
+            <h3 class="font-semibold text-lg mb-4 text-center">Сравнение ответов</h3>
+            <div id="comparison-container" class="space-y-4">
+                <!-- Dynamically populated -->
+            </div>
+
+            <button onclick="goToDashboard()" class="w-full mt-8 py-4 rounded-xl glass-btn active-btn font-bold">
+                Вернуться в лобби
+            </button>
+        </div>
+
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, onSnapshot, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ==========================================
+        // CONFIGURATION & API KEYS
+        // ==========================================
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'couples-quiz-app';
+        
+        // ВНИМАНИЕ: ДЛЯ ВАШЕГО ХОСТИНГА НУЖНО ЗАПОЛНИТЬ ЭТИ ДАННЫЕ!
+        // Зарегистрируйтесь на firebase.google.com, создайте web-проект и скопируйте сюда настройки.
+        // Обязательно включите в консоли Firebase: 1. Firestore Database 2. Authentication (Anonymous)
+        const myExternalFirebaseConfig = {
+            apiKey: "ВАШ_API_KEY",
+            authDomain: "ВАШ_AUTH_DOMAIN",
+            projectId: "ВАШ_PROJECT_ID",
+            storageBucket: "ВАШ_STORAGE_BUCKET",
+            messagingSenderId: "ВАШ_MESSAGING_SENDER_ID",
+            appId: "ВАШ_APP_ID"
+        };
+
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : myExternalFirebaseConfig;
+        
+        // PROVIDED OPENAI KEY
+        const OPENAI_API_KEY = "sk-2uYFnDkB079l4WClduRLGzICb15zuZypFsxyWG8SjWxQd7hT";
+        const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+
+        // ==========================================
+        // QUIZ CONTENT DATABASE (Expandable to 1000+)
+        // ==========================================
+        const QUIZ_DATA = {
+            'everyday': {
+                id: 'everyday',
+                title: 'Быт и Привычки',
+                icon: 'fa-house',
+                color: 'from-green-500 to-teal-400',
+                desc: 'Деньги, уборка, рутина.',
+                questions: [
+                    { id: 'ev1', type: 'slider', text: 'Оцени от 1 до 10, насколько для тебя важна идеальная чистота дома?', labels: ['Творческий хаос', 'Стерильно'] },
+                    { id: 'ev2', type: 'choice', text: 'Как лучше всего вести семейный бюджет?', options: ['Общий котел', 'Раздельный (каждый сам за себя)', 'Пропорциональный доходу', 'Все деньги у одного'] },
+                    { id: 'ev3', type: 'complex_boolean', text: 'Сможешь ли ты жить с питомцем партнера, если он тебе не нравится?', options: ['Да, привыкну', 'Да, но уход на партнере', 'Нет, будем искать компромисс', 'Нет, животное придется отдать'] },
+                    { id: 'ev4', type: 'boolean', text: 'Должны ли обязанности по дому делиться строго 50/50?' },
+                    { id: 'ev5', type: 'choice', text: 'Идеальный выходной — это...', options: ['Лежать на диване с сериалом', 'Активный отдых (горы, велик)', 'Поход в ресторан / кино', 'Уборка и готовка на неделю'] }
+                ]
+            },
+            'relationships': {
+                id: 'relationships',
+                title: 'Глубокие Отношения',
+                icon: 'fa-heart',
+                color: 'from-pink-500 to-rose-400',
+                desc: 'Эмоции, конфликты, планы.',
+                questions: [
+                    { id: 'rel1', type: 'slider', text: 'Насколько процентов ты ревнив(а)?', labels: ['0%', '100%'] },
+                    { id: 'rel2', type: 'choice', text: 'Кто должен извиняться первым после сильной ссоры?', options: ['Тот, кто объективно неправ', 'Мужчина, он должен быть мудрее', 'Тот, кто быстрее остыл', 'Извиняться не нужно, само пройдет'] },
+                    { id: 'rel3', type: 'boolean', text: 'Допустимо ли проверять телефон партнера без спроса?' },
+                    { id: 'rel4', type: 'complex_boolean', text: 'Сможем ли мы пережить год на расстоянии (в разных городах)?', options: ['Да, легко', 'Да, но будет очень тяжело', 'Нет, чувства угаснут', 'Нет, я сразу разорву отношения'] },
+                    { id: 'rel5', type: 'choice', text: 'Какой твой основной "Язык любви"?', options: ['Слова поощрения', 'Качественное время вместе', 'Подарки', 'Помощь в делах', 'Физические прикосновения'] }
+                ]
+            },
+            'sexy': {
+                id: 'sexy',
+                title: 'Секси (18+)',
+                icon: 'fa-fire',
+                color: 'from-red-500 to-orange-400',
+                desc: 'Интимная жизнь и фантазии.',
+                questions: [
+                    { id: 'sex1', type: 'slider', text: 'Как часто в неделю для тебя идеален секс?', labels: ['Редко (1-2)', 'Каждый день (7+)'] },
+                    { id: 'sex2', type: 'boolean', text: 'Хотел(а) бы ты попробовать ролевые игры с костюмами?' },
+                    { id: 'sex3', type: 'choice', text: 'Что для тебя важнее в постели?', options: ['Долгая прелюдия и романтика', 'Животная страсть и скорость', 'Эксперименты и новизна', 'Эмоциональная близость'] },
+                    { id: 'sex4', type: 'complex_boolean', text: 'Относишься ли ты положительно к игрушкам в постели?', options: ['Да, использую/хочу', 'Можно попробовать разок', 'Мне все равно', 'Категорически против'] },
+                    { id: 'sex5', type: 'choice', text: 'Какое время суток для тебя предпочтительнее для интима?', options: ['Утро, заряжает энергией', 'День, спонтанность', 'Поздний вечер перед сном', 'Ночь, когда темно'] }
+                ]
+            },
+            'games': {
+                id: 'games',
+                title: 'Игры Разума',
+                icon: 'fa-mask',
+                color: 'from-purple-500 to-indigo-400',
+                desc: 'Абстрактные ситуации.',
+                questions: [
+                    { id: 'g1', type: 'choice', text: 'Если бы начался зомби-апокалипсис, какая была бы твоя роль?', options: ['Лидер группы', 'Добытчик припасов', 'Охранник периметра', 'Приманка'] },
+                    { id: 'g2', type: 'boolean', text: 'Согласился бы ты стереть себе память о прошлых болезненных отношениях?' },
+                    { id: 'g3', type: 'slider', text: 'Оцени уровень своей удачливости по жизни', labels: ['Полный неудачник', 'Любимчик фортуны'] },
+                    { id: 'g4', type: 'complex_boolean', text: 'Если бы партнер совершил преступление, ты бы помог(ла) спрятать улики?', options: ['Да, без вопросов', 'Смотря какое преступление', 'Сказал(а) бы сдаться полиции', 'Сдал(а) бы его сам(а)'] }
+                ]
+            }
+        };
+
+        // ==========================================
+        // STATE MANAGEMENT
+        // ==========================================
+        let app, db, auth;
+        let currentUser = null; // { uid, name, partnerId, linkCode, dates }
+        let currentPartner = null; // { uid, name }
+        
+        let activeSessionId = null;
+        let currentQuizDef = null;
+        let currentQuestionIndex = 0;
+        let myAnswers = {};
+        
+        let sessionUnsubscribe = null;
+        let lobbyUnsubscribe = null;
+        let userUnsubscribe = null;
+        
+        let counterInterval = null;
+
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            
+            auth.onAuthStateChanged(async (user) => {
+                if (user) {
+                    await loadUserProfile(user.uid);
+                } else {
+                    showView('view-login');
+                }
+            });
+            
+            // Auto login anonymously if required by canvas
+            if (!auth.currentUser) {
+                 signInAnonymously(auth).catch(e => console.error("Auth error", e));
+            }
+        } catch (e) {
+            console.error("Firebase init failed, running in degraded mode", e);
+            // Fallback UI logic if Firebase fails in preview
+            document.getElementById('view-login').innerHTML = '<div class="p-4 bg-red-500/20 text-red-200 rounded">Ошибка инициализации БД.</div>';
+        }
+
+        // ==========================================
+        // NAVIGATION HELPER
+        // ==========================================
+        window.showView = (viewId) => {
+            const views = ['view-login', 'view-link', 'view-dashboard', 'view-quiz-waiting', 'view-quiz-active', 'view-results'];
+            views.forEach(v => {
+                const el = document.getElementById(v);
+                if (el) {
+                    if (v === viewId) el.classList.remove('hidden');
+                    else el.classList.add('hidden');
+                }
+            });
+            
+            // Header visibility
+            const header = document.getElementById('main-header');
+            if (viewId === 'view-login') header.classList.add('hidden');
+            else header.classList.remove('hidden');
+        };
+
+        // ==========================================
+        // USER PROFILE & MATCHMAKING
+        // ==========================================
+        async function loadUserProfile(uid) {
+            const userRef = doc(db, 'artifacts', appId, 'users', uid);
+            
+            userUnsubscribe = onSnapshot(userRef, async (docSnap) => {
+                if (docSnap.exists()) {
+                    currentUser = { uid, ...docSnap.data() };
+                    document.getElementById('user-display-name').innerText = currentUser.name;
+                    
+                    if (currentUser.partnerId) {
+                        // Linked!
+                        await loadPartnerProfile(currentUser.partnerId);
+                        initDashboard();
+                    } else {
+                        // Needs linking
+                        document.getElementById('my-code').innerText = currentUser.linkCode;
+                        showView('view-link');
+                    }
+                } else {
+                    // New user but logged in
+                    showView('view-login');
+                }
+            }, (error) => {
+                console.error("User listener error:", error);
+            });
+        }
+
+        async function loadPartnerProfile(partnerUid) {
+            const pRef = doc(db, 'artifacts', appId, 'users', partnerUid);
+            const pSnap = await getDoc(pRef);
+            if (pSnap.exists()) {
+                currentPartner = { uid: partnerUid, ...pSnap.data() };
+            }
+        }
+
+        window.handleLogin = async () => {
+            const nameInput = document.getElementById('input-name').value.trim();
+            if (!nameInput) return;
+            
+            const btn = document.querySelector('#view-login button');
+            btn.innerHTML = '<div class="loader mx-auto h-5 w-5 border-2"></div>';
+            
+            const uid = auth.currentUser.uid;
+            const linkCode = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digit code
+            
+            await setDoc(doc(db, 'artifacts', appId, 'users', uid), {
+                name: nameInput,
+                linkCode: linkCode,
+                partnerId: null,
+                dates: { start: null },
+                createdAt: serverTimestamp()
+            });
+            
+            // Listener will auto-trigger loadUserProfile
+        };
+
+        window.copyCode = () => {
+            const code = document.getElementById('my-code').innerText;
+            navigator.clipboard.writeText(code).then(() => {
+                document.getElementById('copy-status').innerText = "Скопировано!";
+                document.getElementById('copy-status').classList.add('text-green-400');
+                setTimeout(() => {
+                    document.getElementById('copy-status').innerText = "Нажмите на код, чтобы скопировать";
+                    document.getElementById('copy-status').classList.remove('text-green-400');
+                }, 2000);
+            });
+        };
+
+        window.linkPartner = async () => {
+            const codeInput = document.getElementById('input-partner-code').value.trim();
+            if (codeInput.length !== 6) return;
+            
+            document.getElementById('linking-status').classList.remove('hidden');
+            
+            // Search for user with this code
+            const usersRef = collection(db, 'artifacts', appId, 'users');
+            const q = query(usersRef, where('linkCode', '==', codeInput));
+            
+            try {
+                const querySnapshot = await getDocs(q);
+                if (!querySnapshot.empty) {
+                    const partnerDoc = querySnapshot.docs[0];
+                    const partnerId = partnerDoc.id;
+                    
+                    if (partnerId === currentUser.uid) {
+                        alert("Нельзя подключиться к самому себе.");
+                        document.getElementById('linking-status').classList.add('hidden');
+                        return;
+                    }
+
+                    // Update my profile
+                    await updateDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid), {
+                        partnerId: partnerId
+                    });
+                    
+                    // Update partner's profile
+                    await updateDoc(doc(db, 'artifacts', appId, 'users', partnerId), {
+                        partnerId: currentUser.uid
+                    });
+                    
+                    // The onSnapshot will catch this and redirect to Dashboard
+                } else {
+                    document.getElementById('linking-status').innerText = "Код не найден. Проверьте правильность.";
+                    document.getElementById('linking-status').classList.remove('text-orange-300', 'pulse-text');
+                    document.getElementById('linking-status').classList.add('text-red-400');
+                    setTimeout(() => {
+                        document.getElementById('linking-status').classList.add('hidden');
+                        document.getElementById('linking-status').innerText = "Ожидание подключения партнера...";
+                        document.getElementById('linking-status').classList.add('text-orange-300', 'pulse-text');
+                        document.getElementById('linking-status').classList.remove('text-red-400');
+                    }, 3000);
+                }
+            } catch (error) {
+                console.error("Link error:", error);
+            }
+        };
+
+        window.logout = () => {
+            if (userUnsubscribe) userUnsubscribe();
+            if (lobbyUnsubscribe) lobbyUnsubscribe();
+            if (sessionUnsubscribe) sessionUnsubscribe();
+            clearInterval(counterInterval);
+            // Just reload to reset state for this demo sandbox
+            window.location.reload(); 
+        };
+
+        // ==========================================
+        // DASHBOARD & RELATIONSHIP COUNTER
+        // ==========================================
+        function initDashboard() {
+            showView('view-dashboard');
+            renderQuizzesList();
+            initCounter();
+            listenForInvites();
+        }
+
+        window.toggleDateSetup = () => {
+            const panel = document.getElementById('date-setup-panel');
+            panel.classList.toggle('hidden');
+            if (currentUser.dates && currentUser.dates.start) {
+                document.getElementById('date-start').value = currentUser.dates.start;
+            }
+        };
+
+        window.saveDates = async () => {
+            const startDate = document.getElementById('date-start').value;
+            if (!startDate) return;
+            
+            await updateDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid), {
+                'dates.start': startDate
+            });
+            // Update partner too so both see same date
+            if (currentUser.partnerId) {
+                await updateDoc(doc(db, 'artifacts', appId, 'users', currentUser.partnerId), {
+                    'dates.start': startDate
+                });
+            }
+            toggleDateSetup();
+        };
+
+        function initCounter() {
+            if (counterInterval) clearInterval(counterInterval);
+            
+            counterInterval = setInterval(() => {
+                if (!currentUser || !currentUser.dates || !currentUser.dates.start) {
+                    document.getElementById('cnt-days').innerText = '-';
+                    return;
+                }
+                
+                const start = new Date(currentUser.dates.start).getTime();
+                const now = new Date().getTime();
+                const diff = now - start;
+                
+                if (diff < 0) return; // Future date
+                
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const secs = Math.floor((diff % (1000 * 60)) / 1000);
+                
+                document.getElementById('cnt-days').innerText = days;
+                document.getElementById('cnt-hours').innerText = hours;
+                document.getElementById('cnt-mins').innerText = mins;
+                document.getElementById('cnt-secs').innerText = secs;
+            }, 1000);
+        }
+
+        function renderQuizzesList() {
+            const container = document.getElementById('quizzes-container');
+            container.innerHTML = '';
+            
+            Object.values(QUIZ_DATA).forEach(quiz => {
+                const card = document.createElement('div');
+                card.className = `glass-panel p-4 rounded-xl cursor-pointer hover:scale-[1.02] transition-transform border-l-4 border-l-transparent hover:border-l-pink-400 flex items-center justify-between`;
+                card.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br ${quiz.color} flex items-center justify-center text-white shadow-lg">
+                            <i class="fa-solid ${quiz.icon} text-xl"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-lg">${quiz.title}</h4>
+                            <p class="text-xs text-gray-400">${quiz.desc} • ${quiz.questions.length} вопросов</p>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-500"></i>
+                `;
+                card.onclick = () => initiateQuiz(quiz.id);
+                container.appendChild(card);
+            });
+        }
+
+        // ==========================================
+        // GAMEPLAY MECHANICS (SESSIONS)
+        // ==========================================
+        async function initiateQuiz(quizId) {
+            // Check if already in a session
+            showView('view-quiz-waiting');
+            
+            // Create session ID based on both UIDs to make it unique per pair per topic
+            // Sort UIDs so both partners generate the same string
+            const pairId = [currentUser.uid, currentPartner.uid].sort().join('_');
+            activeSessionId = `session_${pairId}_${quizId}`;
+            currentQuizDef = QUIZ_DATA[quizId];
+            
+            const sessionRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', activeSessionId);
+            
+            // Try to get session to see if partner already initiated
+            const snap = await getDoc(sessionRef);
+            
+            if (snap.exists() && snap.data().status === 'waiting') {
+                // Join existing
+                await updateDoc(sessionRef, {
+                    status: 'active',
+                    [`users.${currentUser.uid}.status`]: 'joined'
+                });
+            } else {
+                // Create new
+                const sessionData = {
+                    topic: quizId,
+                    status: 'waiting',
+                    initiator: currentUser.uid,
+                    createdAt: serverTimestamp(),
+                    users: {
+                        [currentUser.uid]: { progress: 0, answers: {}, status: 'joined' },
+                        [currentPartner.uid]: { progress: 0, answers: {}, status: 'invited' }
+                    }
+                };
+                await setDoc(sessionRef, sessionData);
+            }
+            
+            listenToActiveSession();
+        }
+
+        function listenForInvites() {
+            if (lobbyUnsubscribe) lobbyUnsubscribe();
+            if (!currentUser || !currentPartner) return;
+
+            const sessionsRef = collection(db, 'artifacts', appId, 'public', 'data', 'sessions');
+            // Hacky query for our constrained environment (no compound indexes). 
+            // We fetch all sessions (in a real app, structure by user) and filter in memory.
+            
+            lobbyUnsubscribe = onSnapshot(sessionsRef, (snapshot) => {
+                let foundInvite = null;
+                
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    if (data.status === 'waiting' && data.users[currentUser.uid]?.status === 'invited') {
+                        foundInvite = { id: docSnap.id, ...data };
+                    }
+                });
+                
+                const alertEl = document.getElementById('partner-invite-alert');
+                if (foundInvite) {
+                    activeSessionId = foundInvite.id;
+                    currentQuizDef = QUIZ_DATA[foundInvite.topic];
+                    document.getElementById('invite-topic-name').innerText = currentQuizDef.title;
+                    alertEl.classList.remove('hidden');
+                } else {
+                    alertEl.classList.add('hidden');
+                }
+            }, (err) => console.error(err));
+        }
+
+        window.acceptInvite = async () => {
+            if (!activeSessionId) return;
+            const sessionRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', activeSessionId);
+            await updateDoc(sessionRef, {
+                status: 'active',
+                [`users.${currentUser.uid}.status`]: 'joined'
+            });
+            document.getElementById('partner-invite-alert').classList.add('hidden');
+            listenToActiveSession();
+        };
+
+        window.cancelQuiz = async () => {
+            if (activeSessionId) {
+                const sessionRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', activeSessionId);
+                await updateDoc(sessionRef, { status: 'cancelled' });
+                if (sessionUnsubscribe) sessionUnsubscribe();
+            }
+            showView('view-dashboard');
+        };
+
+        function listenToActiveSession() {
+            if (sessionUnsubscribe) sessionUnsubscribe();
+            
+            const sessionRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', activeSessionId);
+            
+            sessionUnsubscribe = onSnapshot(sessionRef, (docSnap) => {
+                if (!docSnap.exists()) return;
+                
+                const data = docSnap.data();
+                
+                if (data.status === 'cancelled') {
+                    alert('Партнер отменил квиз.');
+                    showView('view-dashboard');
+                    return;
+                }
+
+                if (data.status === 'active') {
+                    if (document.getElementById('view-quiz-active').classList.contains('hidden') &&
+                        document.getElementById('view-results').classList.contains('hidden')) {
+                        // Just started
+                        currentQuestionIndex = 0;
+                        myAnswers = {};
+                        startQuizUI();
+                    }
+                    
+                    // Update partner status text
+                    const pData = data.users[currentPartner.uid];
+                    const pStatusEl = document.getElementById('partner-quiz-status');
+                    const pProgEl = document.getElementById('partner-progress-text');
+                    
+                    if (pData) {
+                        pProgEl.innerText = `${pData.progress}/${currentQuizDef.questions.length}`;
+                        if (pData.progress === currentQuizDef.questions.length) {
+                             pStatusEl.innerText = `${currentPartner.name} ждет вас на финише...`;
+                        } else {
+                             pStatusEl.innerText = `${currentPartner.name} отвечает на вопрос ${pData.progress + 1}...`;
+                        }
+                    }
+                }
+                
+                if (data.status === 'finished') {
+                    // Both done, show results
+                    if(document.getElementById('view-results').classList.contains('hidden')){
+                        showResultsUI(data);
+                    }
+                }
+            }, (err) => console.error("Session sync error", err));
+        }
+
+        // ==========================================
+        // QUIZ RENDERING (NO TEXT INPUTS)
+        // ==========================================
+        function startQuizUI() {
+            showView('view-quiz-active');
+            document.getElementById('quiz-active-category').innerText = currentQuizDef.title;
+            document.getElementById('q-total').innerText = currentQuizDef.questions.length;
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            if (currentQuestionIndex >= currentQuizDef.questions.length) {
+                finishQuiz();
+                return;
+            }
+
+            const q = currentQuizDef.questions[currentQuestionIndex];
+            document.getElementById('q-current').innerText = currentQuestionIndex + 1;
+            document.getElementById('question-text').innerText = q.text;
+            
+            const container = document.getElementById('answers-container');
+            container.innerHTML = ''; // Clear previous
+
+            // Render specific UI based on type
+            if (q.type === 'slider') {
+                container.innerHTML = `
+                    <div class="glass-panel p-6 rounded-2xl w-full text-center">
+                        <div class="flex justify-between text-xs text-gray-400 mb-4 font-semibold uppercase tracking-wide">
+                            <span>${q.labels[0]}</span>
+                            <span>${q.labels[1]}</span>
+                        </div>
+                        <input type="range" min="1" max="10" value="5" class="w-full mb-6" id="q-slider">
+                        <div class="text-3xl font-bold text-pink-400 mb-6" id="q-slider-val">5</div>
+                        <button onclick="saveAnswer('slider')" class="w-full py-4 rounded-xl glass-btn active-btn font-bold text-lg">Выбрать</button>
+                    </div>
+                `;
+                
+                // Live update value
+                setTimeout(() => {
+                    const sl = document.getElementById('q-slider');
+                    const valEl = document.getElementById('q-slider-val');
+                    sl.oninput = () => valEl.innerText = sl.value;
+                }, 100);
+
+            } else if (q.type === 'boolean') {
+                container.innerHTML = `
+                    <div class="grid grid-cols-2 gap-4">
+                        <button onclick="saveAnswer('boolean', 'Да')" class="py-6 rounded-2xl glass-btn text-2xl font-bold border-green-500/30 hover:bg-green-500/20 text-green-300">ДА</button>
+                        <button onclick="saveAnswer('boolean', 'Нет')" class="py-6 rounded-2xl glass-btn text-2xl font-bold border-red-500/30 hover:bg-red-500/20 text-red-300">НЕТ</button>
+                    </div>
+                `;
+            } else if (q.type === 'complex_boolean' || q.type === 'choice') {
+                q.options.forEach(opt => {
+                    const btn = document.createElement('button');
+                    btn.className = "w-full py-4 px-6 rounded-xl glass-btn text-left font-medium hover:bg-white/10 transition flex items-center justify-between group";
+                    btn.innerHTML = `<span>${opt}</span> <i class="fa-solid fa-circle-check opacity-0 group-hover:opacity-100 text-pink-400 transition"></i>`;
+                    btn.onclick = () => saveAnswer('choice', opt);
+                    container.appendChild(btn);
+                });
+            }
+            
+            // Sync progress to firebase
+            const sessionRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', activeSessionId);
+            updateDoc(sessionRef, {
+                [`users.${currentUser.uid}.progress`]: currentQuestionIndex
+            });
+        }
+
+        window.saveAnswer = async (type, value) => {
+            const q = currentQuizDef.questions[currentQuestionIndex];
+            
+            if (type === 'slider') {
+                value = document.getElementById('q-slider').value;
+            }
+            
+            myAnswers[q.id] = {
+                text: q.text,
+                answer: value
+            };
+            
+            // Animate out
+            document.getElementById('answers-container').style.opacity = 0;
+            
+            setTimeout(() => {
+                currentQuestionIndex++;
+                document.getElementById('answers-container').style.opacity = 1;
+                renderQuestion();
+            }, 300);
+        };
+
+        async function finishQuiz() {
+            showView('view-quiz-waiting'); // Show waiting while we sync
+            document.querySelector('#view-quiz-waiting h2').innerText = "Ответы сохранены";
+            document.querySelector('#view-quiz-waiting p').innerText = `Ждем, пока ${currentPartner.name} закончит отвечать...`;
+
+            const sessionRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', activeSessionId);
+            
+            // Save answers
+            await updateDoc(sessionRef, {
+                [`users.${currentUser.uid}.progress`]: currentQuizDef.questions.length,
+                [`users.${currentUser.uid}.answers`]: myAnswers
+            });
+            
+            // Check if both are done
+            const snap = await getDoc(sessionRef);
+            const data = snap.data();
+            const pData = data.users[currentPartner.uid];
+            
+            if (pData && pData.progress === currentQuizDef.questions.length) {
+                // I am the last one to finish, mark session finished
+                await updateDoc(sessionRef, { status: 'finished' });
+            }
+        }
+
+        // ==========================================
+        // RESULTS & OPENAI ANALYSIS
+        // ==========================================
+        async function showResultsUI(sessionData) {
+            showView('view-results');
+            
+            const myData = sessionData.users[currentUser.uid].answers;
+            const pData = sessionData.users[currentPartner.uid].answers;
+            
+            const compContainer = document.getElementById('comparison-container');
+            compContainer.innerHTML = '';
+            
+            // Build Comparison UI
+            currentQuizDef.questions.forEach((q, idx) => {
+                const myAns = myData[q.id]?.answer || '-';
+                const pAns = pData[q.id]?.answer || '-';
+                
+                // Simple Match detection
+                const isMatch = String(myAns) === String(pAns);
+                const borderCol = isMatch ? 'border-green-500/30' : 'border-white/10';
+                
+                const card = document.createElement('div');
+                card.className = `glass-panel p-4 rounded-xl border ${borderCol}`;
+                card.innerHTML = `
+                    <p class="text-sm font-semibold mb-3 text-gray-200">${idx+1}. ${q.text}</p>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div class="bg-black/20 p-3 rounded-lg text-center">
+                            <span class="block text-[10px] text-gray-500 mb-1 uppercase">${currentUser.name}</span>
+                            <span class="font-bold text-pink-300">${myAns}</span>
+                        </div>
+                        <div class="bg-black/20 p-3 rounded-lg text-center">
+                            <span class="block text-[10px] text-gray-500 mb-1 uppercase">${currentPartner.name}</span>
+                            <span class="font-bold text-orange-300">${pAns}</span>
+                        </div>
+                    </div>
+                `;
+                compContainer.appendChild(card);
+            });
+            
+            // Trigger AI Analysis if not already done
+            if (!sessionData.aiAnalysis) {
+                // Only initiator triggers to save API calls
+                if (sessionData.initiator === currentUser.uid) {
+                    analyzeWithAI(currentQuizDef.title, myData, pData, sessionData);
+                }
+            } else {
+                renderAIReport(sessionData.aiAnalysis);
+            }
+        }
+
+        async function analyzeWithAI(topic, myData, pData, sessionData) {
+            document.getElementById('ai-loading').classList.remove('hidden');
+            document.getElementById('ai-report').classList.add('hidden');
+
+            // Format data for prompt
+            let answersText = "";
+            currentQuizDef.questions.forEach((q, idx) => {
+                answersText += `Вопрос ${idx+1}: ${q.text}\n`;
+                answersText += `${currentUser.name} ответил: ${myData[q.id]?.answer}\n`;
+                answersText += `${currentPartner.name} ответил: ${pData[q.id]?.answer}\n\n`;
+            });
+
+            const prompt = `
+Ты опытный семейный психолог и коуч по отношениям. Проанализируй ответы пары (${currentUser.name} и ${currentPartner.name}) на тему "${topic}".
+Ответы:
+${answersText}
+
+Сделай глубокий психологический анализ их совместимости по этой теме. 
+1. В чем они идеально сходятся.
+2. Где потенциальные точки конфликта и как с ними работать.
+3. Общий вывод и совет для укрепления отношений.
+
+Отвечай в формате HTML: используй теги <b>, <p>, <ul>, <li>. Не используй markdown (***). Пиши красивым, эмпатичным, но профессиональным языком. Обращайся к паре на "вы".
+`;
+
+            try {
+                // Note: Using client-side direct API call as requested per constraints.
+                const response = await fetch(OPENAI_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${OPENAI_API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-4o-mini', // Fast, cheap, capable
+                        messages: [{role: 'system', content: 'Ты ИИ-Психолог.'}, {role: 'user', content: prompt}],
+                        temperature: 0.7
+                    })
+                });
+
+                const json = await response.json();
+                
+                if (json.choices && json.choices.length > 0) {
+                    const aiHtml = json.choices[0].message.content;
+                    
+                    // Save to session so partner can read it too
+                    const sessionRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', activeSessionId);
+                    await updateDoc(sessionRef, { aiAnalysis: aiHtml });
+                    
+                    renderAIReport(aiHtml);
+                } else {
+                    renderAIReport("<p>К сожалению, психолог сейчас недоступен (ошибка API).</p>");
+                }
+            } catch (e) {
+                console.error("OpenAI Error:", e);
+                renderAIReport("<p>Ошибка соединения с сервером ИИ.</p>");
+            }
+        }
+
+        function renderAIReport(htmlString) {
+            document.getElementById('ai-loading').classList.add('hidden');
+            document.getElementById('ai-report').classList.remove('hidden');
+            
+            // Clean markdown blocks if AI accidentally added them despite prompt
+            htmlString = htmlString.replace(/```html/g, '').replace(/```/g, '');
+            
+            document.getElementById('ai-content').innerHTML = htmlString;
+        }
+
+        window.goToDashboard = () => {
+            if (sessionUnsubscribe) sessionUnsubscribe();
+            activeSessionId = null;
+            showView('view-dashboard');
+        };
+
+    </script>
+</body>
+</html>
